@@ -30,6 +30,16 @@ export const navigationItems: NavigationItem[] = [
     icon: Package,
   },
   {
+    title: "Clientes",
+    href: "/dashboard/clientes",
+    icon: Users,
+  },
+  {
+    title: "Permisionarios",
+    href: "/dashboard/permisionarios",
+    icon: ShoppingCart, // Assuming "ShoppingCart
+  },
+  {
     title: "Settings",
     href: "/dashboard/settings",
     icon: Settings,

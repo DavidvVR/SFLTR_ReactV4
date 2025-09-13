@@ -1,0 +1,108 @@
+*** 1,1 ***
+*** 23 ****
+- import { Plus, Folder, Eye, Trash2, Pencil } from "lucide-react"
++ import { Plus, Folder, Eye, Trash2, Pencil, Search, X } from "lucide-react"
+*** 86 ****
+   React.useEffect(() => { setClientes(listClientes()) }, [])
+ 
++  // 🔎 Buscador: ID / RFC / Nombre
++  const [query, setQuery] = React.useState("")
++  const filtered = React.useMemo(() => {
++    const q = query.trim().toLowerCase()
++    if (!q) return clientes
++    return clientes.filter(c =>
++      (c.id ?? "").toLowerCase().includes(q) ||
++      (c.nombre ?? "").toLowerCase().includes(q) ||
++      (c.rfc ?? "").toLowerCase().includes(q)
++    )
++  }, [clientes, query])
++
+*** 257 ****
+-         <CardContent className="space-y-6">
++         <CardContent className="space-y-6">
++           {/* Toolbar de búsqueda y contador */}
++           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
++             <div className="text-sm text-muted-foreground">
++               {filtered.length} de {clientes.length} clientes
++             </div>
++             <div className="relative w-full sm:w-[360px]">
++               <Search className="pointer-events-none absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
++               <Input
++                 value={query}
++                 onChange={(e)=>setQuery(e.target.value)}
++                 placeholder="Buscar por ID / RFC / Nombre"
++                 className="pl-8"
++               />
++               {query && (
++                 <button
++                   type="button"
++                   className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground"
++                   onClick={()=>setQuery("")}
++                   title="Limpiar"
++                 >
++                   <X className="h-4 w-4" />
++                 </button>
++               )}
++             </div>
++           </div>
+*** 269 ****
+-                 <TableBody>
+-                   {clientes.length === 0 ? (
++                 <TableBody>
++                   {filtered.length === 0 ? (
+                      <TableRow>
+-                       <TableCell colSpan={5} className="text-center text-muted-foreground">
+-                         No hay clientes registrados.
++                       <TableCell colSpan={5} className="text-center text-muted-foreground">
++                         {clientes.length === 0
++                           ? "No hay clientes registrados."
++                           : `No se encontraron clientes para “${query}”.`}
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+-                   clientes.map((c) => (
++                   filtered.map((c) => (
+                      <TableRow key={c.id}>
+                        <TableCell className="font-mono text-xs">{c.id}</TableCell>
+                        <TableCell>{c.nombre}</TableCell>
+                        <TableCell>{c.rfc ?? "—"}</TableCell>
+                        <TableCell>
+                          <span className={c.estatus === "Activo" ? "text-green-600" : "text-red-600"}>
+                            {c.estatus}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            <Button variant="outline" size="icon" title="Editar" onClick={() => startEditCliente(c.id)}>
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button variant="outline" size="icon" title="Eliminar">
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Eliminar cliente</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Esta acción no se puede deshacer. ¿Deseas eliminar “{c.nombre}”?
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => confirmRemoveCliente(c.id)}>
+                                    Eliminar
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                 </TableBody>
+               </Table>
+             </div>
+           </div>

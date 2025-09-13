@@ -1,3 +1,4 @@
+// src/routes/dashboard/route.tsx
 import { AppSidebar } from "@/components/app-sidebar";
 import { PathBreadcrumbs } from "@/components/path-breadcrumbs";
 import {
@@ -22,7 +23,18 @@ import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/dashboard")({
   beforeLoad: async ({ context }) => {
-    if (!context.userSession.isAuthenticated) {
+    let isAuth = !!context?.userSession?.isAuthenticated;
+
+    // Fallback: aceptar el login local (UI-only) basado en localStorage
+    if (!isAuth && typeof window !== "undefined") {
+      try {
+        isAuth = !!localStorage.getItem("sfltr_token");
+      } catch {
+        // ignore
+      }
+    }
+
+    if (!isAuth) {
       throw redirect({ to: "/" });
     }
   },

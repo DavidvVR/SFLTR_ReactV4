@@ -16,6 +16,8 @@ import { Route as IndexImport } from './routes/index'
 import { Route as DashboardIndexImport } from './routes/dashboard/index'
 import { Route as DashboardSettingsImport } from './routes/dashboard/settings'
 import { Route as DashboardProductsImport } from './routes/dashboard/products'
+import { Route as DashboardPermisionariosImport } from './routes/dashboard/permisionarios'
+import { Route as DashboardClientesImport } from './routes/dashboard/clientes'
 
 // Create/Update Routes
 
@@ -49,6 +51,18 @@ const DashboardProductsRoute = DashboardProductsImport.update({
   getParentRoute: () => DashboardRouteRoute,
 } as any)
 
+const DashboardPermisionariosRoute = DashboardPermisionariosImport.update({
+  id: '/permisionarios',
+  path: '/permisionarios',
+  getParentRoute: () => DashboardRouteRoute,
+} as any)
+
+const DashboardClientesRoute = DashboardClientesImport.update({
+  id: '/clientes',
+  path: '/clientes',
+  getParentRoute: () => DashboardRouteRoute,
+} as any)
+
 // Populate the FileRoutesByPath interface
 
 declare module '@tanstack/react-router' {
@@ -66,6 +80,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/dashboard'
       preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRoute
+    }
+    '/dashboard/clientes': {
+      id: '/dashboard/clientes'
+      path: '/clientes'
+      fullPath: '/dashboard/clientes'
+      preLoaderRoute: typeof DashboardClientesImport
+      parentRoute: typeof DashboardRouteImport
+    }
+    '/dashboard/permisionarios': {
+      id: '/dashboard/permisionarios'
+      path: '/permisionarios'
+      fullPath: '/dashboard/permisionarios'
+      preLoaderRoute: typeof DashboardPermisionariosImport
+      parentRoute: typeof DashboardRouteImport
     }
     '/dashboard/products': {
       id: '/dashboard/products'
@@ -94,12 +122,16 @@ declare module '@tanstack/react-router' {
 // Create and export the route tree
 
 interface DashboardRouteRouteChildren {
+  DashboardClientesRoute: typeof DashboardClientesRoute
+  DashboardPermisionariosRoute: typeof DashboardPermisionariosRoute
   DashboardProductsRoute: typeof DashboardProductsRoute
   DashboardSettingsRoute: typeof DashboardSettingsRoute
   DashboardIndexRoute: typeof DashboardIndexRoute
 }
 
 const DashboardRouteRouteChildren: DashboardRouteRouteChildren = {
+  DashboardClientesRoute: DashboardClientesRoute,
+  DashboardPermisionariosRoute: DashboardPermisionariosRoute,
   DashboardProductsRoute: DashboardProductsRoute,
   DashboardSettingsRoute: DashboardSettingsRoute,
   DashboardIndexRoute: DashboardIndexRoute,
@@ -112,6 +144,8 @@ const DashboardRouteRouteWithChildren = DashboardRouteRoute._addFileChildren(
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRouteRouteWithChildren
+  '/dashboard/clientes': typeof DashboardClientesRoute
+  '/dashboard/permisionarios': typeof DashboardPermisionariosRoute
   '/dashboard/products': typeof DashboardProductsRoute
   '/dashboard/settings': typeof DashboardSettingsRoute
   '/dashboard/': typeof DashboardIndexRoute
@@ -119,6 +153,8 @@ export interface FileRoutesByFullPath {
 
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/dashboard/clientes': typeof DashboardClientesRoute
+  '/dashboard/permisionarios': typeof DashboardPermisionariosRoute
   '/dashboard/products': typeof DashboardProductsRoute
   '/dashboard/settings': typeof DashboardSettingsRoute
   '/dashboard': typeof DashboardIndexRoute
@@ -128,6 +164,8 @@ export interface FileRoutesById {
   __root__: typeof rootRoute
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRouteRouteWithChildren
+  '/dashboard/clientes': typeof DashboardClientesRoute
+  '/dashboard/permisionarios': typeof DashboardPermisionariosRoute
   '/dashboard/products': typeof DashboardProductsRoute
   '/dashboard/settings': typeof DashboardSettingsRoute
   '/dashboard/': typeof DashboardIndexRoute
@@ -138,15 +176,25 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/dashboard'
+    | '/dashboard/clientes'
+    | '/dashboard/permisionarios'
     | '/dashboard/products'
     | '/dashboard/settings'
     | '/dashboard/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/dashboard/products' | '/dashboard/settings' | '/dashboard'
+  to:
+    | '/'
+    | '/dashboard/clientes'
+    | '/dashboard/permisionarios'
+    | '/dashboard/products'
+    | '/dashboard/settings'
+    | '/dashboard'
   id:
     | '__root__'
     | '/'
     | '/dashboard'
+    | '/dashboard/clientes'
+    | '/dashboard/permisionarios'
     | '/dashboard/products'
     | '/dashboard/settings'
     | '/dashboard/'
@@ -183,10 +231,20 @@ export const routeTree = rootRoute
     "/dashboard": {
       "filePath": "dashboard/route.tsx",
       "children": [
+        "/dashboard/clientes",
+        "/dashboard/permisionarios",
         "/dashboard/products",
         "/dashboard/settings",
         "/dashboard/"
       ]
+    },
+    "/dashboard/clientes": {
+      "filePath": "dashboard/clientes.tsx",
+      "parent": "/dashboard"
+    },
+    "/dashboard/permisionarios": {
+      "filePath": "dashboard/permisionarios.tsx",
+      "parent": "/dashboard"
     },
     "/dashboard/products": {
       "filePath": "dashboard/products.tsx",
