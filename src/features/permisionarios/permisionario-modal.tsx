@@ -13,10 +13,6 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 
-
-
-
-
 export type PermisionarioForm = {
   id: string
   razonSocial: string
@@ -111,6 +107,10 @@ const EMPTY: PermisionarioForm = {
   operadores: [],
 }
 
+function getNextId() {
+  return `ID-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+}
+
 export default function PermisionarioModal({
   open,
   onOpenChange,
@@ -122,33 +122,66 @@ export default function PermisionarioModal({
   const [form, setForm] = React.useState<PermisionarioForm>({ ...EMPTY })
 
   React.useEffect(() => {
-    if (!open) return
-    setTab('datos')
-    setForm((prev) => ({
-      ...EMPTY,
-      ...initialValue,
-      id: initialValue?.id ?? prev.id ?? '',
-      estatus: (initialValue?.estatus as any) ?? 'Activo',
-      docs: initialValue?.docs?.length ? initialValue.docs as DocRecord[] : DEFAULT_DOCS.map(d => ({ ...d })),
-      unidades: Array.isArray((initialValue as any)?.unidades) ? (initialValue as any).unidades : [],
-      operadores: Array.isArray((initialValue as any)?.operadores) ? (initialValue as any)?.operadores : [],
-    }))
-  }, [open, initialValue])
+    if (!open) {
+      // Limpia el formulario al cerrar para evitar mostrar datos viejos brevemente
+      setForm({ ...EMPTY });
+      return;
+    }
+
+    setTab('datos');
+
+    // Lógica de inicialización robusta
+    if (initialValue) {
+      // --- MODO EDICIÓN ---
+      // Se está editando un permisionario existente
+      setForm({
+        id: initialValue.id ?? getNextId(), // Usa el ID existente o genera uno si falta
+        razonSocial: initialValue.razonSocial ?? '',
+        alias: initialValue.alias ?? '',
+        rfc: initialValue.rfc ?? '',
+        estatus: initialValue.estatus ?? 'Activo',
+        domicilio: initialValue.domicilio ?? '',
+        opNombre: initialValue.opNombre ?? '',
+        opEmail: initialValue.opEmail ?? '',
+        opTel: initialValue.opTel ?? '',
+        adNombre: initialValue.adNombre ?? '',
+        adEmail: initialValue.adEmail ?? '',
+        adTel: initialValue.adTel ?? '',
+        coNombre: initialValue.coNombre ?? '',
+        coEmail: initialValue.coEmail ?? '',
+        coTel: initialValue.coTel ?? '',
+        // Asegura que los arrays existan
+        docs: initialValue.docs ?? DEFAULT_DOCS.map(d => ({ ...d })),
+        unidades: initialValue.unidades ?? [],
+        operadores: initialValue.operadores ?? [],
+      });
+    } else {
+      // --- MODO CREACIÓN ---
+      // Se está creando un nuevo permisionario
+      setForm({
+        ...EMPTY,
+        id: getNextId(), // Genera un nuevo ID para el nuevo registro
+      });
+    }
+  }, [open, initialValue]);
 
   const update = <K extends keyof PermisionarioForm>(k: K) =>
     (v: PermisionarioForm[K]) =>
       setForm((f) => ({ ...f, [k]: v }))
 
   function handleSave() {
+    // CORRECCIÓN: Asegurarse de que todos los campos, incluyendo los arrays, se pasen al guardar.
     const payload: PermisionarioForm = {
-      ...form,
-      rfc: form.rfc.trim().toUpperCase(),
+      ...form, // Empieza con todos los datos del formulario (incluyendo unidades y operadores)
+      // Ahora, sobrescribe solo los campos que necesitas limpiar o transformar
       razonSocial: form.razonSocial.trim(),
       alias: form.alias.trim(),
+      rfc: form.rfc.trim().toUpperCase(),
     }
     onSave?.(payload)
     onOpenChange(false)
   }
+
   function setDocUrl(key: DocKey, url?: string, fileName?: string) {
     setForm((f) => ({
       ...f,
@@ -485,8 +518,6 @@ export default function PermisionarioModal({
                   previsualizan con una URL temporal del navegador.
                 </p>
               </TabsContent>
-
-
               <TabsContent value="unidades" className="m-0 space-y-4">
                 <div className="flex items-center justify-between">
                   <h3 className="text-base font-semibold">Unidades</h3>
@@ -552,7 +583,6 @@ export default function PermisionarioModal({
                   {/* Si no lo tienes, puedes usar Sheet/AlertDialog. */}
                 </div>
               </TabsContent>
-
 
               <TabsContent value="operadores" className="m-0 space-y-4">
                 <div className="flex items-center justify-between">

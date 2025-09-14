@@ -45,6 +45,11 @@ export const navigationItems: NavigationItem[] = [
     icon: "truck",
   },
   {
+    title: "Asignación",
+    href: "/dashboard/asignacion",
+    icon: Users,
+  },
+  {
     title: "Settings",
     href: "/dashboard/settings",
     icon: Settings,

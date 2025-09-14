@@ -1,0 +1,63 @@
+[
+  {
+    "id": "LTR-PR-001",
+    "razonSocial": "Transportes Veloz S.A. de C.V.",
+    "alias": "TVSA",
+    "rfc": "TVE850101XXX",
+    "estatus": "Activo",
+    "domicilio": "Av. Siempre Viva 742, Springfield",
+    "opNombre": "Juan Perez",
+    "opEmail": "juan.perez@tvsa.com",
+    "opTel": "5512345678",
+    "adNombre": "Ana Gomez",
+    "adEmail": "ana.gomez@tvsa.com",
+    "adTel": "5587654321",
+    "coNombre": "",
+    "coEmail": "",
+    "coTel": "",
+    "docs": [],
+    "unidades": [
+      {
+        "id": "U-0001",
+        "placas": "123-ABC-1",
+        "eco": "E-101",
+        "tipo": "Tractor",
+        "vencePoliza": "2026-12-31",
+        "aseguradora": "Quálitas",
+        "marca": "Freightliner",
+        "anio": 2022,
+        "permisoSCT": "SCT-PERM-001"
+      }
+    ],
+    "operadores": [
+      {
+        "id": "OP-0001",
+        "nombre": "Carlos Sanchez",
+        "numLicencia": "LIC987654",
+        "venceLicencia": "2027-05-20",
+        "venceAptoMedico": "2026-05-20",
+        "rfc": "SACC800101YYY"
+      }
+    ]
+  },
+  {
+    "id": "LTR-PR-002",
+    "razonSocial": "Logística del Norte S. de R.L.",
+    "alias": "LogiNorte",
+    "rfc": "LNO950202YYY",
+    "estatus": "Activo",
+    "domicilio": "Calle Falsa 123, Monterrey",
+    "opNombre": "Maria Rodriguez",
+    "opEmail": "maria.r@loginorte.com",
+    "opTel": "8112345678",
+    "adNombre": "",
+    "adEmail": "",
+    "adTel": "",
+    "coNombre": "",
+    "coEmail": "",
+    "coTel": "",
+    "docs": [],
+    "unidades": [],
+    "operadores": []
+  }
+]
