@@ -7,24 +7,12 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
 import { Label } from '@/components/ui/label'
 import { Plus, Trash2, Pencil, FileUp, FileDown } from 'lucide-react'
-
-// --- Tipos de Datos ---
-type OperadorLTR = {
-  id: string
-  nombre: string
-  numLicencia?: string
-  venceLicencia?: string // yyyy-mm-dd
-  expMedico?: string // yyyy-mm-dd
-  venceAptoMedico?: string // yyyy-mm-dd
-  rfc?: string
-  curp?: string
-  telefono?: string
-  nss?: string
-  estatus: 'Activo' | 'Inactivo' | 'Capacitación' | 'Baja'
-  // Campos para archivos (opcional, solo para UI)
-  licenciaNombre?: string
-  aptoMedicoNombre?: string
-}
+import {
+  type OperadorLTR,
+  readAll,
+  upsert,
+  remove,
+} from '../data/ltr-operadores-local'
 
 const EMPTY_OPERADOR: OperadorLTR = {
   id: '',
@@ -40,16 +28,14 @@ const EMPTY_OPERADOR: OperadorLTR = {
   estatus: 'Activo',
 }
 
-// --- Datos de ejemplo ---
-const MOCK_DATA: OperadorLTR[] = [
-  { id: 'OP-101', nombre: 'Juan Pérez', numLicencia: 'B12345', estatus: 'Activo', venceLicencia: '2026-10-05' },
-  { id: 'OP-102', nombre: 'María López', numLicencia: 'C67890', estatus: 'Capacitación', venceAptoMedico: '2025-12-20' },
-]
-
 export default function OperadoresView() {
   // --- Estado Principal ---
-  const [data, setData] = React.useState<OperadorLTR[]>(MOCK_DATA)
+  const [data, setData] = React.useState<OperadorLTR[]>([])
   const [q, setQ] = React.useState('')
+
+  React.useEffect(() => {
+    setData(readAll())
+  }, [])
 
   // --- Estado del Modal (Sheet) ---
   const [sheetOpen, setSheetOpen] = React.useState(false)
@@ -90,6 +76,7 @@ export default function OperadoresView() {
   }
 
   function handleDelete(id: string) {
+    remove(id)
     setData(prev => prev.filter(o => o.id !== id))
   }
 
@@ -98,6 +85,9 @@ export default function OperadoresView() {
       alert('Nombre, No. de Licencia y CURP son campos obligatorios.')
       return
     }
+
+    upsert(draft)
+
     if (isEditing) {
       setData(prev => prev.map(o => o.id === draft.id ? draft : o))
     } else {

@@ -1,0 +1,28 @@
+[
+  {
+    "id": "LTR-OP-01",
+    "nombre": "Juan Pérez García",
+    "numLicencia": "B1234567",
+    "venceLicencia": "2026-10-05",
+    "expMedico": "2024-10-05",
+    "venceAptoMedico": "2026-10-05",
+    "rfc": "PEGA800101ABC",
+    "curp": "PEGA800101HXXYYZ01",
+    "telefono": "5512345678",
+    "nss": "12345678901",
+    "estatus": "Activo"
+  },
+  {
+    "id": "LTR-OP-02",
+    "nombre": "María López Hernández",
+    "numLicencia": "C9876543",
+    "venceLicencia": "2025-12-20",
+    "expMedico": "2023-12-20",
+    "venceAptoMedico": "2025-12-20",
+    "rfc": "LOHM900202DEF",
+    "curp": "LOHM900202MXXYYZ02",
+    "telefono": "5587654321",
+    "nss": "98765432109",
+    "estatus": "Capacitación"
+  }
+]

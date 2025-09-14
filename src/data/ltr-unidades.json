@@ -1,0 +1,38 @@
+[
+  {
+    "id": "LTR-UN-01",
+    "placas": "ABC-123",
+    "tipo": "Torton",
+    "eco": "E-10",
+    "disponibilidad": "Disponible",
+    "marca": "Freightliner",
+    "anio": 2022,
+    "permisoSCT": "SCT12345",
+    "aseguradora": "Qualitas",
+    "vencePoliza": "2026-05-10"
+  },
+  {
+    "id": "LTR-UN-02",
+    "placas": "XYZ-987",
+    "tipo": "Tráiler",
+    "eco": "E-12",
+    "disponibilidad": "En Mtto",
+    "marca": "Kenworth",
+    "anio": 2020,
+    "permisoSCT": "SCT67890",
+    "aseguradora": "GNP",
+    "vencePoliza": "2025-11-22"
+  },
+  {
+    "id": "LTR-UN-03",
+    "placas": "RBN-456",
+    "tipo": "Rabón",
+    "eco": "E-15",
+    "disponibilidad": "Disponible",
+    "marca": "International",
+    "anio": 2023,
+    "permisoSCT": "SCT54321",
+    "aseguradora": "Qualitas",
+    "vencePoliza": "2027-01-15"
+  }
+]

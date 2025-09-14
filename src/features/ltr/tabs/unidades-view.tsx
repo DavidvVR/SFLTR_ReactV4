@@ -9,24 +9,12 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Label } from '@/components/ui/label'
 import { Plus, Trash2, Pencil, FileUp, FileDown } from 'lucide-react'
 import * as XLSX from 'xlsx'
-
-// --- Tipos de Datos ---
-type UnidadLTR = {
-  id: string
-  placas: string
-  eco?: string
-  tipo: string
-  disponibilidad: 'Disponible' | 'En Mtto'
-  tarjetaUrl?: string
-  tarjetaNombre?: string
-  aseguradora?: string
-  vencePoliza?: string
-  polizaUrl?: string
-  polizaNombre?: string
-  marca?: string
-  anio?: number | ''
-  permisoSCT?: string
-}
+import {
+  type UnidadLTR,
+  readAll,
+  upsert,
+  remove,
+} from '../data/ltr-unidades-local'
 
 const EMPTY_UNIDAD: UnidadLTR = {
   id: '',
@@ -41,18 +29,15 @@ const EMPTY_UNIDAD: UnidadLTR = {
   vencePoliza: '',
 }
 
-// --- Datos de ejemplo ---
-const MOCK_DATA: UnidadLTR[] = [
-  { id: 'U-001', tipo: 'Torton', placas: 'ABC-123', eco: 'E-10', disponibilidad: 'Disponible' },
-  { id: 'U-002', tipo: 'Tráiler', placas: 'XYZ-987', eco: 'E-12', disponibilidad: 'En Mtto' },
-  { id: 'U-003', tipo: 'Rabón', placas: 'RBN-456', eco: 'E-15', disponibilidad: 'Disponible' },
-]
-
 export default function UnidadesView() {
   // --- Estado Principal ---
-  const [data, setData] = React.useState<UnidadLTR[]>(MOCK_DATA)
+  const [data, setData] = React.useState<UnidadLTR[]>([])
   const [q, setQ] = React.useState('')
   const [tipoFilter, setTipoFilter] = React.useState('')
+
+  React.useEffect(() => {
+    setData(readAll())
+  }, [])
 
   // --- Estado del Modal (Sheet) ---
   const [sheetOpen, setSheetOpen] = React.useState(false)
@@ -100,6 +85,7 @@ export default function UnidadesView() {
   }
 
   function handleDelete(id: string) {
+    remove(id)
     setData(prev => prev.filter(u => u.id !== id))
   }
 
@@ -108,6 +94,9 @@ export default function UnidadesView() {
       alert('Placas y Tipo son campos obligatorios.')
       return
     }
+    
+    upsert(draft)
+
     if (isEditing) {
       setData(prev => prev.map(u => u.id === draft.id ? draft : u))
     } else {
@@ -141,7 +130,13 @@ export default function UnidadesView() {
         const worksheet = workbook.Sheets[sheetName]
         const jsonData = XLSX.utils.sheet_to_json<UnidadLTR>(worksheet)
         
-        setData(prev => [...prev, ...jsonData.map(item => ({...item, id: `U-${Date.now()}-${Math.random()}`}))])
+        const newData = [...data]
+        jsonData.forEach(item => {
+          upsert(item)
+          newData.push(item)
+        })
+
+        setData(newData)
         alert(`${jsonData.length} unidades importadas.`)
       } catch (error) {
         alert("Error al importar el archivo.")
@@ -149,7 +144,7 @@ export default function UnidadesView() {
       }
     }
     reader.readAsBinaryString(file)
-    event.target.value = '' // Limpiar para poder re-seleccionar
+    event.target.value = ''
   }
 
   return (
