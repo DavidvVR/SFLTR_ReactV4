@@ -40,6 +40,11 @@ export const navigationItems: NavigationItem[] = [
     icon: ShoppingCart, // Assuming "ShoppingCart
   },
   {
+    title: "LTR",
+    href: "/dashboard/ltr",
+    icon: "truck",
+  },
+  {
     title: "Settings",
     href: "/dashboard/settings",
     icon: Settings,

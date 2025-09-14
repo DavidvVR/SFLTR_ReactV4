@@ -17,7 +17,9 @@ import { Route as DashboardIndexImport } from './routes/dashboard/index'
 import { Route as DashboardSettingsImport } from './routes/dashboard/settings'
 import { Route as DashboardProductsImport } from './routes/dashboard/products'
 import { Route as DashboardPermisionariosImport } from './routes/dashboard/permisionarios'
+import { Route as DashboardLtrImport } from './routes/dashboard/ltr'
 import { Route as DashboardClientesImport } from './routes/dashboard/clientes'
+import { Route as DashboardLTRIndexImport } from './routes/dashboard/LTR/index'
 
 // Create/Update Routes
 
@@ -57,9 +59,21 @@ const DashboardPermisionariosRoute = DashboardPermisionariosImport.update({
   getParentRoute: () => DashboardRouteRoute,
 } as any)
 
+const DashboardLtrRoute = DashboardLtrImport.update({
+  id: '/ltr',
+  path: '/ltr',
+  getParentRoute: () => DashboardRouteRoute,
+} as any)
+
 const DashboardClientesRoute = DashboardClientesImport.update({
   id: '/clientes',
   path: '/clientes',
+  getParentRoute: () => DashboardRouteRoute,
+} as any)
+
+const DashboardLTRIndexRoute = DashboardLTRIndexImport.update({
+  id: '/LTR/',
+  path: '/LTR/',
   getParentRoute: () => DashboardRouteRoute,
 } as any)
 
@@ -86,6 +100,13 @@ declare module '@tanstack/react-router' {
       path: '/clientes'
       fullPath: '/dashboard/clientes'
       preLoaderRoute: typeof DashboardClientesImport
+      parentRoute: typeof DashboardRouteImport
+    }
+    '/dashboard/ltr': {
+      id: '/dashboard/ltr'
+      path: '/ltr'
+      fullPath: '/dashboard/ltr'
+      preLoaderRoute: typeof DashboardLtrImport
       parentRoute: typeof DashboardRouteImport
     }
     '/dashboard/permisionarios': {
@@ -116,6 +137,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardIndexImport
       parentRoute: typeof DashboardRouteImport
     }
+    '/dashboard/LTR/': {
+      id: '/dashboard/LTR/'
+      path: '/LTR'
+      fullPath: '/dashboard/LTR'
+      preLoaderRoute: typeof DashboardLTRIndexImport
+      parentRoute: typeof DashboardRouteImport
+    }
   }
 }
 
@@ -123,18 +151,22 @@ declare module '@tanstack/react-router' {
 
 interface DashboardRouteRouteChildren {
   DashboardClientesRoute: typeof DashboardClientesRoute
+  DashboardLtrRoute: typeof DashboardLtrRoute
   DashboardPermisionariosRoute: typeof DashboardPermisionariosRoute
   DashboardProductsRoute: typeof DashboardProductsRoute
   DashboardSettingsRoute: typeof DashboardSettingsRoute
   DashboardIndexRoute: typeof DashboardIndexRoute
+  DashboardLTRIndexRoute: typeof DashboardLTRIndexRoute
 }
 
 const DashboardRouteRouteChildren: DashboardRouteRouteChildren = {
   DashboardClientesRoute: DashboardClientesRoute,
+  DashboardLtrRoute: DashboardLtrRoute,
   DashboardPermisionariosRoute: DashboardPermisionariosRoute,
   DashboardProductsRoute: DashboardProductsRoute,
   DashboardSettingsRoute: DashboardSettingsRoute,
   DashboardIndexRoute: DashboardIndexRoute,
+  DashboardLTRIndexRoute: DashboardLTRIndexRoute,
 }
 
 const DashboardRouteRouteWithChildren = DashboardRouteRoute._addFileChildren(
@@ -145,19 +177,23 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRouteRouteWithChildren
   '/dashboard/clientes': typeof DashboardClientesRoute
+  '/dashboard/ltr': typeof DashboardLtrRoute
   '/dashboard/permisionarios': typeof DashboardPermisionariosRoute
   '/dashboard/products': typeof DashboardProductsRoute
   '/dashboard/settings': typeof DashboardSettingsRoute
   '/dashboard/': typeof DashboardIndexRoute
+  '/dashboard/LTR': typeof DashboardLTRIndexRoute
 }
 
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dashboard/clientes': typeof DashboardClientesRoute
+  '/dashboard/ltr': typeof DashboardLtrRoute
   '/dashboard/permisionarios': typeof DashboardPermisionariosRoute
   '/dashboard/products': typeof DashboardProductsRoute
   '/dashboard/settings': typeof DashboardSettingsRoute
   '/dashboard': typeof DashboardIndexRoute
+  '/dashboard/LTR': typeof DashboardLTRIndexRoute
 }
 
 export interface FileRoutesById {
@@ -165,10 +201,12 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRouteRouteWithChildren
   '/dashboard/clientes': typeof DashboardClientesRoute
+  '/dashboard/ltr': typeof DashboardLtrRoute
   '/dashboard/permisionarios': typeof DashboardPermisionariosRoute
   '/dashboard/products': typeof DashboardProductsRoute
   '/dashboard/settings': typeof DashboardSettingsRoute
   '/dashboard/': typeof DashboardIndexRoute
+  '/dashboard/LTR/': typeof DashboardLTRIndexRoute
 }
 
 export interface FileRouteTypes {
@@ -177,27 +215,33 @@ export interface FileRouteTypes {
     | '/'
     | '/dashboard'
     | '/dashboard/clientes'
+    | '/dashboard/ltr'
     | '/dashboard/permisionarios'
     | '/dashboard/products'
     | '/dashboard/settings'
     | '/dashboard/'
+    | '/dashboard/LTR'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/dashboard/clientes'
+    | '/dashboard/ltr'
     | '/dashboard/permisionarios'
     | '/dashboard/products'
     | '/dashboard/settings'
     | '/dashboard'
+    | '/dashboard/LTR'
   id:
     | '__root__'
     | '/'
     | '/dashboard'
     | '/dashboard/clientes'
+    | '/dashboard/ltr'
     | '/dashboard/permisionarios'
     | '/dashboard/products'
     | '/dashboard/settings'
     | '/dashboard/'
+    | '/dashboard/LTR/'
   fileRoutesById: FileRoutesById
 }
 
@@ -232,14 +276,20 @@ export const routeTree = rootRoute
       "filePath": "dashboard/route.tsx",
       "children": [
         "/dashboard/clientes",
+        "/dashboard/ltr",
         "/dashboard/permisionarios",
         "/dashboard/products",
         "/dashboard/settings",
-        "/dashboard/"
+        "/dashboard/",
+        "/dashboard/LTR/"
       ]
     },
     "/dashboard/clientes": {
       "filePath": "dashboard/clientes.tsx",
+      "parent": "/dashboard"
+    },
+    "/dashboard/ltr": {
+      "filePath": "dashboard/ltr.tsx",
       "parent": "/dashboard"
     },
     "/dashboard/permisionarios": {
@@ -256,6 +306,10 @@ export const routeTree = rootRoute
     },
     "/dashboard/": {
       "filePath": "dashboard/index.tsx",
+      "parent": "/dashboard"
+    },
+    "/dashboard/LTR/": {
+      "filePath": "dashboard/LTR/index.tsx",
       "parent": "/dashboard"
     }
   }
