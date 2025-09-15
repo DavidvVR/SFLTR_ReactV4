@@ -34,16 +34,18 @@ interface OperadorBase {
 }
 interface Permisionario {
   id: string;
-  nombre: string;
+  razonSocial: string; // CORREGIDO: de 'nombre' a 'razonSocial'
   unidades: UnidadBase[];
   operadores: OperadorBase[];
 }
 
 // --- Helpers para leer de LocalStorage ---
 const CLIENT_STORAGE_KEYS = ['sr_clientes', 'sr_clientes_registrados', 'srClientes'];
-const LTR_UNITS_KEY = 'SFLTR_LTR_UNIDADES';
+
+// CORRECCIÓN DEFINITIVA: Usar las claves correctas encontradas en tu localStorage.
+const LTR_UNITS_KEY = 'SFLTR_LTR_UNIDADES'; 
 const LTR_OPS_KEY = 'SFLTR_LTR_OPERADORES';
-const PERMISIONARIOS_KEY = 'SFLTR_PERMISIONARIOS';
+const PERMISIONARIOS_KEY = 'sr_permisionarios';
 
 function _readLS<T>(key: string): T[] {
   try {
@@ -57,6 +59,22 @@ function normalizeClient(c: any): Cliente {
     nombre: c.nombre || c.razonSocial || c.nombreRazon || c.nombre_comercial || 'Sin Nombre',
     rfc: c.rfc || c.RFC || '',
     tarifas: c.tarifas || [],
+  };
+}
+
+function normalizeUnit(u: any): UnidadBase {
+  return {
+    id: String(u.id || ''),
+    placas: u.placas || '',
+    eco: u.eco || '',
+    vencePoliza: u.vencePoliza || '',
+  };
+}
+
+function normalizeOperator(o: any): OperadorBase {
+  return {
+    id: String(o.id || ''),
+    nombre: o.nombre || 'Sin Nombre',
   };
 }
 
@@ -101,9 +119,31 @@ export function NuevoServicioSheet({ open, onOpenChange, onSave }: NuevoServicio
   React.useEffect(() => {
     if (open) {
       setClients(getAllClients());
-      setLtrUnits(_readLS<UnidadBase>(LTR_UNITS_KEY));
-      setLtrOperators(_readLS<OperadorBase>(LTR_OPS_KEY));
-      setPermisionarios(_readLS<Permisionario>(PERMISIONARIOS_KEY));
+
+      // Cargar flota propia (LTR) desde las claves correctas
+      const ltrUnitsData = _readLS<any>(LTR_UNITS_KEY).map(normalizeUnit);
+      const ltrOperatorsData = _readLS<any>(LTR_OPS_KEY).map(normalizeOperator);
+      setLtrUnits(ltrUnitsData);
+      setLtrOperators(ltrOperatorsData);
+      
+      console.log('✅ Flota LTR cargada:', { unidades: ltrUnitsData.length, operadores: ltrOperatorsData.length });
+
+      // Cargar flota de terceros (Permisionarios)
+      const rawPermisionarios = _readLS<any>(PERMISIONARIOS_KEY);
+      
+      // CORRECCIÓN: Generar IDs únicos para los operadores de permisionarios.
+      const permisionariosData = rawPermisionarios.map(p => ({
+        ...p,
+        unidades: (p.unidades || []).map(normalizeUnit),
+        // Para cada operador, crea un ID único combinando el ID del permisionario y el índice del operador.
+        operadores: (p.operadores || []).map((op, index) => ({
+          id: `${p.id}-op-${index}`, // Genera un ID único como "LTR-PR-0003-op-0"
+          nombre: op.nombre || 'Sin Nombre',
+        })),
+      }));
+
+      setPermisionarios(permisionariosData);
+      console.log('✅ Permisionarios cargados:', permisionariosData.length);
     }
   }, [open]);
 
@@ -133,31 +173,35 @@ export function NuevoServicioSheet({ open, onOpenChange, onSave }: NuevoServicio
   }, [selectedJourneyIndex, journeys]);
 
   // --- EFECTOS: Lógica encadenada de "Información de la Unidad" ---
+  // CORREGIDO: Unificar la lógica de selección de flota en un solo useEffect
   React.useEffect(() => {
-    setSelectedPermisionarioId(null);
-    setAvailableUnits([]);
-    setAvailableOperators([]);
+    // Primero, limpiar selecciones previas al cambiar de flota o permisionario
+    setSelectedPlaca(null);
+    setSelectedEco(null);
 
     if (fleetType === 'LTR') {
       setAvailableUnits(ltrUnits);
       setAvailableOperators(ltrOperators);
+      setSelectedPermisionarioId(null); // Limpiar selección de permisionario si se cambia a LTR
     } else if (fleetType === 'Permisionario') {
-      // No hacer nada hasta que se seleccione un permisionario
-    }
-  }, [fleetType, ltrUnits, ltrOperators]);
-
-  React.useEffect(() => {
-    if (fleetType !== 'Permisionario' || !selectedPermisionarioId) {
-      if (fleetType !== 'Permisionario') {
-        setAvailableUnits(ltrUnits);
-        setAvailableOperators(ltrOperators);
+      if (selectedPermisionarioId) {
+        // Encuentra el permisionario específico que fue seleccionado
+        const perm = permisionarios.find(p => p.id === selectedPermisionarioId);
+        
+        // CORRECCIÓN: Asigna las unidades Y los operadores que pertenecen a ESE permisionario.
+        setAvailableUnits(perm?.unidades || []);
+        setAvailableOperators(perm?.operadores || []);
+      } else {
+        // Si es Permisionario pero aún no se ha seleccionado uno, la lista está vacía
+        setAvailableUnits([]);
+        setAvailableOperators([]);
       }
-      return;
+    } else {
+      // Si no se ha seleccionado tipo de flota, las listas están vacías
+      setAvailableUnits([]);
+      setAvailableOperators([]);
     }
-    const perm = permisionarios.find(p => p.id === selectedPermisionarioId);
-    setAvailableUnits(perm?.unidades || []);
-    setAvailableOperators(perm?.operadores || []);
-  }, [selectedPermisionarioId, fleetType, permisionarios, ltrUnits, ltrOperators]);
+  }, [fleetType, selectedPermisionarioId, ltrUnits, ltrOperators, permisionarios]);
 
   // Sincronización Placa -> Eco
   React.useEffect(() => {
@@ -257,9 +301,9 @@ export function NuevoServicioSheet({ open, onOpenChange, onSave }: NuevoServicio
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="ns-permisionario">Permisionario</Label>
-                    <Select onValueChange={setSelectedPermisionarioId} value={selectedPermisionarioId || ''} disabled={fleetType !== 'Permisionario'}>
-                      <SelectTrigger id="ns-permisionario"><SelectValue placeholder="Selecciona..." /></SelectTrigger>
-                      <SelectContent>{permisionarios.map(p => <SelectItem key={p.id} value={p.id}>{p.nombre}</SelectItem>)}</SelectContent>
+                    <Select onValueChange={setSelectedPermisionarioId} value={selectedPermisionarioId || ''} disabled={fleetType !== 'Permisionario' || permisionarios.length === 0}>
+                      <SelectTrigger id="ns-permisionario"><SelectValue placeholder={fleetType === 'Permisionario' ? "Selecciona..." : "N/A"} /></SelectTrigger>
+                      <SelectContent>{permisionarios.map(p => <SelectItem key={p.id} value={p.id}>{p.razonSocial}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-2">

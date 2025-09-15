@@ -14,6 +14,7 @@ import {
   upsert,
   search as searchLocal,
   nextId,
+  removeById, // Importar la función de eliminar
   type Permisionario,
   type DocRecord,
 } from '@/features/permisionarios/permisionarioslocal'
@@ -201,6 +202,11 @@ function PermisionariosPage() {
     setOpen(true)
   }
 
+  function handleDelete(id: string) {
+    removeById(id)
+    refresh()
+  }
+
   function handleSave(data: {
     id: string
     rfc: string
@@ -212,6 +218,8 @@ function PermisionariosPage() {
     adNombre: string;  adEmail: string;  adTel: string
     coNombre: string;  coEmail: string;  coTel: string
     docs: DocRecord[]
+    unidades: any[] // Agregar unidades
+    operadores: any[] // Agregar operadores
   }) {
     const merged: Permisionario = {
       ...(editItem ?? {}),
@@ -262,7 +270,11 @@ function PermisionariosPage() {
         </div>
       </div>
 
-      <PermisionariosTable rows={rows} onEdit={handleEdit} />
+      <PermisionariosTable 
+        rows={rows} 
+        onEdit={handleEdit} 
+        onDelete={handleDelete} 
+      />
 
       <PermisionarioModal
         open={open}
@@ -289,6 +301,8 @@ function PermisionariosPage() {
                 coEmail: editItem.coEmail ?? '',
                 coTel: editItem.coTel ?? '',
                 docs: editItem.docs ?? [],
+                unidades: editItem.unidades ?? [], // Agregar unidades
+                operadores: editItem.operadores ?? [], // Agregar operadores
               }
             : undefined
         }

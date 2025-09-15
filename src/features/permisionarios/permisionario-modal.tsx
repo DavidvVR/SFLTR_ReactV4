@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { Folder } from 'lucide-react'
 import {
   Sheet,
   SheetContent,
@@ -125,17 +126,28 @@ export default function PermisionarioModal({
     if (!open) {
       // Limpia el formulario al cerrar para evitar mostrar datos viejos brevemente
       setForm({ ...EMPTY });
+      setTab('datos'); // Reset tab to datos
       return;
     }
 
     setTab('datos');
 
+    // DEBUG: Mostrar qué datos están llegando
+    console.log('🔍 MODAL DEBUG - open:', open);
+    console.log('🔍 MODAL DEBUG - initialValue completo:', JSON.stringify(initialValue, null, 2));
+
     // Lógica de inicialización robusta
     if (initialValue) {
       // --- MODO EDICIÓN ---
-      // Se está editando un permisionario existente
-      setForm({
-        id: initialValue.id ?? getNextId(), // Usa el ID existente o genera uno si falta
+      const mergedDocs = DEFAULT_DOCS.map(defaultDoc => {
+        const savedDoc = initialValue.docs?.find(d => d.key === defaultDoc.key);
+        return savedDoc ? { ...defaultDoc, ...savedDoc } : { ...defaultDoc };
+      });
+
+      console.log('MODO EDICIÓN - initialValue:', initialValue);
+
+      const newFormData = {
+        id: initialValue.id ?? getNextId(),
         razonSocial: initialValue.razonSocial ?? '',
         alias: initialValue.alias ?? '',
         rfc: initialValue.rfc ?? '',
@@ -150,17 +162,21 @@ export default function PermisionarioModal({
         coNombre: initialValue.coNombre ?? '',
         coEmail: initialValue.coEmail ?? '',
         coTel: initialValue.coTel ?? '',
-        // Asegura que los arrays existan
-        docs: initialValue.docs ?? DEFAULT_DOCS.map(d => ({ ...d })),
+        docs: mergedDocs,
         unidades: initialValue.unidades ?? [],
         operadores: initialValue.operadores ?? [],
-      });
+      };
+
+      console.log('🎯 NUEVO FORM DATA:', JSON.stringify(newFormData, null, 2));
+      setForm(newFormData);
     } else {
       // --- MODO CREACIÓN ---
-      // Se está creando un nuevo permisionario
+      console.log('MODO CREACIÓN - Nuevo permisionario');
+      
       setForm({
         ...EMPTY,
-        id: getNextId(), // Genera un nuevo ID para el nuevo registro
+        id: getNextId(),
+        docs: DEFAULT_DOCS.map(d => ({ ...d })),
       });
     }
   }, [open, initialValue]);
@@ -172,14 +188,14 @@ export default function PermisionarioModal({
   function handleSave() {
     // CORRECCIÓN: Asegurarse de que todos los campos, incluyendo los arrays, se pasen al guardar.
     const payload: PermisionarioForm = {
-      ...form, // Empieza con todos los datos del formulario (incluyendo unidades y operadores)
-      // Ahora, sobrescribe solo los campos que necesitas limpiar o transformar
+      ...form,
       razonSocial: form.razonSocial.trim(),
       alias: form.alias.trim(),
       rfc: form.rfc.trim().toUpperCase(),
     }
-    onSave?.(payload)
-    onOpenChange(false)
+    
+    onSave(payload)
+    onOpenChange(false) // Cerrar el modal después de guardar
   }
 
   function setDocUrl(key: DocKey, url?: string, fileName?: string) {
@@ -253,45 +269,69 @@ export default function PermisionarioModal({
   const [opDraft, setOpDraft] = React.useState<Operador>(emptyOperador)
   const [opIndex, setOpIndex] = React.useState<number | null>(null) // null = nuevo, number = edición
 
+  // --- EFECTO DE LIMPIEZA PARA SUB-MODALES ---
+  // Resetea el borrador de la unidad cuando el modal se cierra para evitar "ensuciar"
+  // el estado de una nueva unidad con datos de una edición anterior.
+  React.useEffect(() => {
+    if (!unitOpen) {
+      setUnitIndex(null);
+      setUnitDraft(emptyUnidad);
+    }
+  }, [unitOpen]);
+
+  // Lo mismo para el borrador del operador.
+  React.useEffect(() => {
+    if (!opOpen) {
+      setOpIndex(null);
+      setOpDraft(emptyOperador);
+    }
+  }, [opOpen]);
+
   function openNewUnidad() {
-  setUnitIndex(null)
-  setUnitDraft({ ...emptyUnidad, id: nextUnidadId(form.unidades) })
-  setUnitOpen(true)
+    setUnitIndex(null)
+    setUnitDraft({ ...emptyUnidad, id: nextUnidadId(form.unidades) })
+    setUnitOpen(true)
   }
 
   function openEditUnidad(idx: number) {
-  setUnitIndex(idx)
-  setUnitDraft({ ...form.unidades[idx] })
-  setUnitOpen(true)
+    setUnitIndex(idx)
+    setUnitDraft({ ...form.unidades[idx] })
+    setUnitOpen(true)
   }
 
   function saveUnidad() {
-  setForm((f) => {
-    const list = [...f.unidades]
-    if (unitIndex === null) list.push(unitDraft)
-    else list[unitIndex] = unitDraft
-    return { ...f, unidades: list }
-  })
-  setUnitOpen(false)
-  setUnitIndex(null)
+    if (!unitDraft.placas || !unitDraft.tipo) {
+      alert('Los campos Placas y Tipo son obligatorios para la unidad.');
+      return;
+    }
+    setForm((f) => {
+      const list = [...f.unidades]
+      if (unitIndex === null) { // Creando nueva
+        list.push(unitDraft)
+      } else { // Editando existente
+        list[unitIndex] = unitDraft
+      }
+      return { ...f, unidades: list }
+    })
+    setUnitOpen(false)
   }
 
   function deleteUnidad(idx: number) {
-  setForm((f) => ({ ...f, unidades: f.unidades.filter((_, i) => i !== idx) }))
+    setForm((f) => ({ ...f, unidades: f.unidades.filter((_, i) => i !== idx) }))
   }
 
   // file/url handlers
   function onUnidadTarjetaFile(e: React.ChangeEvent<HTMLInputElement>) {
-  const file = e.target.files?.[0]
-  if (!file) return
-  const blobUrl = URL.createObjectURL(file)
-  setUnitDraft((u) => ({ ...u, tarjetaUrl: blobUrl, tarjetaNombre: file.name }))
+    const file = e.target.files?.[0]
+    if (!file) return
+    const blobUrl = URL.createObjectURL(file)
+    setUnitDraft((u) => ({ ...u, tarjetaUrl: blobUrl, tarjetaNombre: file.name }))
   }
   function onUnidadPolizaFile(e: React.ChangeEvent<HTMLInputElement>) {
-  const file = e.target.files?.[0]
-  if (!file) return
-  const blobUrl = URL.createObjectURL(file)
-  setUnitDraft((u) => ({ ...u, polizaUrl: blobUrl, polizaNombre: file.name }))
+    const file = e.target.files?.[0]
+    if (!file) return
+    const blobUrl = URL.createObjectURL(file)
+    setUnitDraft((u) => ({ ...u, polizaUrl: blobUrl, polizaNombre: file.name }))
   }
 
   function openNewOperador() {
@@ -313,8 +353,11 @@ export default function PermisionarioModal({
     }
     setForm((f) => {
       const list = [...f.operadores]
-      if (opIndex === null) list.push(opDraft)
-      else list[opIndex] = opDraft
+      if (opIndex === null) { // Creando nuevo
+        list.push(opDraft)
+      } else { // Editando existente
+        list[opIndex] = opDraft
+      }
       return { ...f, operadores: list }
     })
     setOpOpen(false)
@@ -456,53 +499,85 @@ export default function PermisionarioModal({
                   <table className="min-w-full text-sm">
                     <thead className="bg-muted/40">
                       <tr>
-                        <th className="px-3 py-2 text-left">Documento</th>
-                        <th className="px-3 py-2 text-left">Estatus</th>
+                        <th className="px-3 py-2 text-left w-[220px]">Documento</th>
+                        <th className="px-3 py-2 text-left w-[120px]">Estatus</th>
                         <th className="px-3 py-2 text-left">Archivo / URL</th>
-                        <th className="px-3 py-2 text-right">Acciones</th>
+                        <th className="px-3 py-2 text-right w-[180px]">Acciones</th>
                       </tr>
                     </thead>
                     <tbody>
                       {form.docs.map((d) => {
                         const hasDoc = !!d.url
+                        const isBlob = d.url?.startsWith('blob:')
                         return (
                           <tr key={d.key} className="border-t align-top">
-                            <td className="px-3 py-2">{d.label}</td>
+                            <td className="px-3 py-2 font-medium">{d.label}</td>
 
                             <td className="px-3 py-2">
-                              {hasDoc ? '✅ Sí' : '❌ No'}
-                              {d.fileName ? <div className="text-xs text-muted-foreground mt-1">{d.fileName}</div> : null}
+                              <span className={hasDoc ? 'text-green-600' : 'text-red-600'}>
+                                {hasDoc ? '✅ Cargado' : '❌ Pendiente'}
+                              </span>
+                              {d.fileName && (
+                                <div className="text-xs text-muted-foreground mt-1 max-w-[150px] truncate" title={d.fileName}>
+                                  {d.fileName}
+                                </div>
+                              )}
                             </td>
 
                             <td className="px-3 py-2">
-                              <div className="flex flex-col gap-2">
-                                {/* subir archivo */}
-                                <Input
-                                  type="file"
-                                  onChange={(e) => onFileChange(d.key, e)}
-                                />
-                                {/* o pegar URL (Drive/OneDrive, etc.) */}
-                                <Input
-                                  placeholder="Pega un enlace (Drive/OneDrive/URL pública)"
-                                  value={d.url ?? ''}
-                                  onChange={(e) => onPasteUrl(d.key, e)}
-                                />
-                              </div>
+                              {/* Input para pegar URL, se muestra si no hay un archivo local (blob) */}
+                              {!isBlob && (
+                                <div className="flex items-center gap-2">
+                                  <Input
+                                    placeholder="Pega un enlace o sube un archivo"
+                                    value={d.url ?? ''}
+                                    onChange={(e) => onPasteUrl(d.key, e)}
+                                    className="flex-grow"
+                                  />
+                                  <Button variant="ghost" size="icon" asChild>
+                                    <label htmlFor={`file-${d.key}`} className="cursor-pointer">
+                                      <Folder className="h-5 w-5" />
+                                    </label>
+                                  </Button>
+                                </div>
+                              )}
+                              {/* Si es un blob, no mostramos el input de URL para evitar confusión */}
+                              {isBlob && (
+                                <div className="text-xs text-muted-foreground italic">
+                                  Archivo local seleccionado.
+                                </div>
+                              )}
                             </td>
 
                             <td className="px-3 py-2">
                               <div className="flex justify-end gap-2">
+                                {/* Input de archivo oculto */}
+                                <input
+                                  type="file"
+                                  id={`file-${d.key}`}
+                                  className="hidden"
+                                  onChange={(e) => onFileChange(d.key, e)}
+                                  accept="application/pdf,image/*"
+                                />
+                                {/* Botón para activar el input de archivo */}
                                 <Button
                                   variant="outline"
-                                  onClick={() => {
-                                    if (!d.url) return
-                                    window.open(d.url, '_blank', 'noopener,noreferrer')
-                                  }}
+                                  size="sm"
+                                  asChild
+                                >
+                                  <label htmlFor={`file-${d.key}`} className="cursor-pointer">
+                                    Subir
+                                  </label>
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => window.open(d.url, '_blank', 'noopener,noreferrer')}
                                   disabled={!d.url}
                                 >
                                   Ver
                                 </Button>
-                                <Button variant="outline" onClick={() => clearDoc(d.key)}>
+                                <Button variant="ghost" size="sm" onClick={() => clearDoc(d.key)} disabled={!d.url}>
                                   Limpiar
                                 </Button>
                               </div>
@@ -511,11 +586,10 @@ export default function PermisionarioModal({
                         )
                       })}
                     </tbody>
-                     </table>
+                  </table>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Sugerencia: utiliza enlaces permanentes (Drive/OneDrive) para conservar la referencia del documento. Los archivos subidos aquí se
-                  previsualizan con una URL temporal del navegador.
+                  Puedes subir un archivo directamente o pegar un enlace a un documento en la nube (Google Drive, OneDrive).
                 </p>
               </TabsContent>
               <TabsContent value="unidades" className="m-0 space-y-4">
@@ -655,13 +729,15 @@ export default function PermisionarioModal({
             <Separator />
 
             {/* Footer sticky con borde y fondo */}
-            <div className="sticky bottom-0 flex items-center justify-end gap-2 px-6 py-4 border-t bg-background">
-              <Button variant="outline" onClick={() => onOpenChange(false)}>
-                Cancelar
-              </Button>
-              <Button onClick={handleSave}>
-                Guardar
-              </Button>
+            <div className="absolute bottom-0 left-0 right-0 bg-background border-t p-4">
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => onOpenChange(false)}>
+                  Cancelar
+                </Button>
+                <Button onClick={handleSave}>
+                  Guardar
+                </Button>
+              </div>
             </div>
           </Tabs>
         </div>

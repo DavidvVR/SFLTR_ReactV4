@@ -32,6 +32,19 @@ export type Unidad = {
   permisoSCT?: string
 }
 
+export type Operador = {
+  id: string
+  nombre: string
+  numLicencia?: string
+  licenciaUrl?: string
+  licenciaNombre?: string
+  venceLicencia?: string // yyyy-mm-dd
+  aptoMedicoUrl?: string
+  aptoMedicoNombre?: string
+  venceAptoMedico?: string // yyyy-mm-dd
+  rfc?: string
+}
+
 export type Permisionario = {
   id: string
   rfc: string
@@ -47,6 +60,8 @@ export type Permisionario = {
   docs?: DocRecord[]
   // Unidades
   unidades?: Unidad[]
+  // Operadores
+  operadores?: Operador[] // ✅ AGREGADO
 }
 
 const LS_KEY = 'sr_permisionarios'
@@ -83,6 +98,18 @@ function sanitizeUnidades(unidades?: Unidad[]): Unidad[] | undefined {
   }))
 }
 
+/** Limpia operadores: descarta blob: en licenciaUrl/aptoMedicoUrl */
+function sanitizeOperadores(operadores?: Operador[]): Operador[] | undefined {
+  if (!operadores?.length) return undefined
+  return operadores.map((op) => ({
+    ...op,
+    licenciaUrl: isBlobUrl(op.licenciaUrl) ? undefined : op.licenciaUrl,
+    licenciaNombre: isBlobUrl(op.licenciaUrl) ? undefined : op.licenciaNombre,
+    aptoMedicoUrl: isBlobUrl(op.aptoMedicoUrl) ? undefined : op.aptoMedicoUrl,
+    aptoMedicoNombre: isBlobUrl(op.aptoMedicoUrl) ? undefined : op.aptoMedicoNombre,
+  }))
+}
+
 // ===== CRUD =====
 export function readAll(): Permisionario[] {
   try {
@@ -104,6 +131,7 @@ export function upsert(item: Permisionario) {
     rfc: (item.rfc || '').toUpperCase(),
     docs: sanitizeDocs(item.docs),
     unidades: sanitizeUnidades(item.unidades),
+    operadores: sanitizeOperadores(item.operadores), // ✅ AGREGADO
   }
 
   const list = readAll()
