@@ -9,6 +9,7 @@ export type Asignacion = {
   estatus: string;
 };
 
+<<<<<<< HEAD
 // Funciones placeholder para interactuar con los datos.
 // La lógica completa se agregará más adelante.
 
@@ -23,4 +24,47 @@ export function upsert(asignacion: Asignacion): void {
 
 export function remove(id: string): void {
   console.log("Eliminando asignación:", id);
+=======
+const STORAGE_KEY = 'SFLTR_ASIGNACIONES_SIMPLE';
+
+function load(): Asignacion[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? (JSON.parse(raw) as Asignacion[]) : [];
+  } catch (e) {
+    console.error('Error leyendo asignaciones:', e);
+    return [];
+  }
+}
+
+function save(all: Asignacion[]) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
+  } catch (e) {
+    console.error('Error guardando asignaciones:', e);
+  }
+}
+
+// Lee todas las asignaciones desde localStorage
+export function readAll(): Asignacion[] {
+  return load();
+}
+
+// Inserta o actualiza una asignación por id
+export function upsert(asignacion: Asignacion): void {
+  const all = load();
+  const idx = all.findIndex(a => a.id === asignacion.id);
+  if (idx >= 0) {
+    all[idx] = asignacion;
+  } else {
+    all.unshift(asignacion);
+  }
+  save(all);
+}
+
+// Elimina una asignación por su ID
+export function remove(id: string): void {
+  const all = load().filter(a => a.id !== id);
+  save(all);
+>>>>>>> Modulo de asiganación60
 }
