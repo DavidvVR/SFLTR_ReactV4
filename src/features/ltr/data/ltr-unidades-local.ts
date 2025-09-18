@@ -1,20 +1,21 @@
 import initialData from '@/data/ltr-unidades.json'
 
-export type UnidadLTR = {
+export interface UnidadLTR {
   id: string
   placas: string
-  eco?: string
   tipo: string
+  eco?: string
   disponibilidad: 'Disponible' | 'En Mtto'
-  tarjetaUrl?: string
-  tarjetaNombre?: string
+  marca?: string
+  anio?: number | string
   aseguradora?: string
   vencePoliza?: string
+  permisoSCT?: string
+  noPoliza?: string // NUEVO
+  tarjetaUrl?: string
+  tarjetaNombre?: string
   polizaUrl?: string
   polizaNombre?: string
-  marca?: string
-  anio?: number | ''
-  permisoSCT?: string
 }
 
 const STORAGE_KEY = 'SFLTR_LTR_UNIDADES'
@@ -42,14 +43,15 @@ function writeAll(unidades: UnidadLTR[]): void {
 
 // Inserta o actualiza una unidad
 export function upsert(unidad: UnidadLTR): void {
-  const unidades = readAll()
-  const index = unidades.findIndex(u => u.id === unidad.id)
-  if (index > -1) {
-    unidades[index] = unidad // Actualizar
+  const all = readAll()
+  const idx = all.findIndex(u => u.id === unidad.id)
+  if (idx >= 0) {
+    // merge para no perder noPoliza (u otros campos nuevos)
+    all[idx] = { ...all[idx], ...unidad }
   } else {
-    unidades.push(unidad) // Insertar
+    all.push(unidad)
   }
-  writeAll(unidades)
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(all))
 }
 
 // Elimina una unidad por su ID

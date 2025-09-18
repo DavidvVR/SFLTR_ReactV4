@@ -16,7 +16,10 @@ import {
   remove,
 } from '../data/ltr-unidades-local'
 
-const EMPTY_UNIDAD: UnidadLTR = {
+// Extiende el tipo localmente para incluir No de Póliza
+type UnidadLTREx = UnidadLTR & { noPoliza?: string }
+
+const EMPTY_UNIDAD: UnidadLTREx = {
   id: '',
   placas: '',
   tipo: '',
@@ -24,24 +27,26 @@ const EMPTY_UNIDAD: UnidadLTR = {
   disponibilidad: 'Disponible',
   marca: '',
   anio: '',
-  permisoSCT: '',
   aseguradora: '',
   vencePoliza: '',
+  permisoSCT: '',
+  noPoliza: '', // NUEVO
 }
 
 export default function UnidadesView() {
   // --- Estado Principal ---
-  const [data, setData] = React.useState<UnidadLTR[]>([])
+  const [data, setData] = React.useState<UnidadLTREx[]>([])
   const [q, setQ] = React.useState('')
   const [tipoFilter, setTipoFilter] = React.useState('')
 
   React.useEffect(() => {
-    setData(readAll())
+    // Lee y mapea posibles registros existentes (si ya traen noPoliza, se conserva)
+    setData(readAll().map(u => ({ ...u })))
   }, [])
 
   // --- Estado del Modal (Sheet) ---
   const [sheetOpen, setSheetOpen] = React.useState(false)
-  const [draft, setDraft] = React.useState<UnidadLTR>(EMPTY_UNIDAD)
+  const [draft, setDraft] = React.useState<UnidadLTREx>(EMPTY_UNIDAD)
   const [isEditing, setIsEditing] = React.useState(false)
   const importFileRef = React.useRef<HTMLInputElement | null>(null)
 
@@ -94,8 +99,8 @@ export default function UnidadesView() {
       alert('Placas y Tipo son campos obligatorios.')
       return
     }
-    
-    upsert(draft)
+    // Persiste (el store puede ignorar campos extra si no los usa)
+    upsert(draft as UnidadLTR)
 
     if (isEditing) {
       setData(prev => prev.map(u => u.id === draft.id ? draft : u))
@@ -292,6 +297,16 @@ export default function UnidadesView() {
                 <div className="space-y-2">
                   <Label htmlFor="ltrUAnio">Año</Label>
                   <Input id="ltrUAnio" type="number" value={draft.anio || ''} onChange={e => setDraft(d => ({ ...d, anio: e.target.value ? Number(e.target.value) : '' }))} />
+                </div>
+                { /* NUEVO: No de Póliza (texto) */ }
+                <div className="space-y-2">
+                  <Label htmlFor="ltrUNoPoliza">No de Póliza</Label>
+                  <Input
+                    id="ltrUNoPoliza"
+                    type="text"
+                    value={draft.noPoliza || ''}
+                    onChange={(e) => setDraft(d => ({ ...d, noPoliza: e.target.value }))}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="ltrUAseguradora">Aseguradora</Label>

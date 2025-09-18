@@ -122,3 +122,12 @@ export function listAsignaciones(): AsignacionRecord[] {
   const s = loadStore()
   return Object.values(s.byId).sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
 }
+
+export function removeAsignacion(id: string) {
+  const store = loadStore()
+  if (store.byId[id]) {
+    delete store.byId[id]
+    store.updatedAt = new Date().toISOString()
+    saveStore(store)
+  }
+}

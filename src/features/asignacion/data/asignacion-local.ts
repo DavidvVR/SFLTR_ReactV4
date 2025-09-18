@@ -9,22 +9,6 @@ export type Asignacion = {
   estatus: string;
 };
 
-<<<<<<< HEAD
-// Funciones placeholder para interactuar con los datos.
-// La lógica completa se agregará más adelante.
-
-export function readAll(): Asignacion[] {
-  console.log("Leyendo todas las asignaciones...");
-  return [];
-}
-
-export function upsert(asignacion: Asignacion): void {
-  console.log("Guardando asignación:", asignacion.id);
-}
-
-export function remove(id: string): void {
-  console.log("Eliminando asignación:", id);
-=======
 const STORAGE_KEY = 'SFLTR_ASIGNACIONES_SIMPLE';
 
 function load(): Asignacion[] {
@@ -66,5 +50,4 @@ export function upsert(asignacion: Asignacion): void {
 export function remove(id: string): void {
   const all = load().filter(a => a.id !== id);
   save(all);
->>>>>>> Modulo de asiganación60
 }
