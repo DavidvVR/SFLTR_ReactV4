@@ -17,6 +17,7 @@ import { Route as DashboardIndexImport } from './routes/dashboard/index'
 import { Route as DashboardSettingsImport } from './routes/dashboard/settings'
 import { Route as DashboardProductsImport } from './routes/dashboard/products'
 import { Route as DashboardPermisionariosImport } from './routes/dashboard/permisionarios'
+import { Route as DashboardMonitoreoImport } from './routes/dashboard/monitoreo'
 import { Route as DashboardLtrImport } from './routes/dashboard/ltr'
 import { Route as DashboardClientesImport } from './routes/dashboard/clientes'
 import { Route as DashboardAsignacionImport } from './routes/dashboard/asignacion'
@@ -57,6 +58,12 @@ const DashboardProductsRoute = DashboardProductsImport.update({
 const DashboardPermisionariosRoute = DashboardPermisionariosImport.update({
   id: '/permisionarios',
   path: '/permisionarios',
+  getParentRoute: () => DashboardRouteRoute,
+} as any)
+
+const DashboardMonitoreoRoute = DashboardMonitoreoImport.update({
+  id: '/monitoreo',
+  path: '/monitoreo',
   getParentRoute: () => DashboardRouteRoute,
 } as any)
 
@@ -123,6 +130,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardLtrImport
       parentRoute: typeof DashboardRouteImport
     }
+    '/dashboard/monitoreo': {
+      id: '/dashboard/monitoreo'
+      path: '/monitoreo'
+      fullPath: '/dashboard/monitoreo'
+      preLoaderRoute: typeof DashboardMonitoreoImport
+      parentRoute: typeof DashboardRouteImport
+    }
     '/dashboard/permisionarios': {
       id: '/dashboard/permisionarios'
       path: '/permisionarios'
@@ -167,6 +181,7 @@ interface DashboardRouteRouteChildren {
   DashboardAsignacionRoute: typeof DashboardAsignacionRoute
   DashboardClientesRoute: typeof DashboardClientesRoute
   DashboardLtrRoute: typeof DashboardLtrRoute
+  DashboardMonitoreoRoute: typeof DashboardMonitoreoRoute
   DashboardPermisionariosRoute: typeof DashboardPermisionariosRoute
   DashboardProductsRoute: typeof DashboardProductsRoute
   DashboardSettingsRoute: typeof DashboardSettingsRoute
@@ -178,6 +193,7 @@ const DashboardRouteRouteChildren: DashboardRouteRouteChildren = {
   DashboardAsignacionRoute: DashboardAsignacionRoute,
   DashboardClientesRoute: DashboardClientesRoute,
   DashboardLtrRoute: DashboardLtrRoute,
+  DashboardMonitoreoRoute: DashboardMonitoreoRoute,
   DashboardPermisionariosRoute: DashboardPermisionariosRoute,
   DashboardProductsRoute: DashboardProductsRoute,
   DashboardSettingsRoute: DashboardSettingsRoute,
@@ -195,6 +211,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/asignacion': typeof DashboardAsignacionRoute
   '/dashboard/clientes': typeof DashboardClientesRoute
   '/dashboard/ltr': typeof DashboardLtrRoute
+  '/dashboard/monitoreo': typeof DashboardMonitoreoRoute
   '/dashboard/permisionarios': typeof DashboardPermisionariosRoute
   '/dashboard/products': typeof DashboardProductsRoute
   '/dashboard/settings': typeof DashboardSettingsRoute
@@ -207,6 +224,7 @@ export interface FileRoutesByTo {
   '/dashboard/asignacion': typeof DashboardAsignacionRoute
   '/dashboard/clientes': typeof DashboardClientesRoute
   '/dashboard/ltr': typeof DashboardLtrRoute
+  '/dashboard/monitoreo': typeof DashboardMonitoreoRoute
   '/dashboard/permisionarios': typeof DashboardPermisionariosRoute
   '/dashboard/products': typeof DashboardProductsRoute
   '/dashboard/settings': typeof DashboardSettingsRoute
@@ -221,6 +239,7 @@ export interface FileRoutesById {
   '/dashboard/asignacion': typeof DashboardAsignacionRoute
   '/dashboard/clientes': typeof DashboardClientesRoute
   '/dashboard/ltr': typeof DashboardLtrRoute
+  '/dashboard/monitoreo': typeof DashboardMonitoreoRoute
   '/dashboard/permisionarios': typeof DashboardPermisionariosRoute
   '/dashboard/products': typeof DashboardProductsRoute
   '/dashboard/settings': typeof DashboardSettingsRoute
@@ -236,6 +255,7 @@ export interface FileRouteTypes {
     | '/dashboard/asignacion'
     | '/dashboard/clientes'
     | '/dashboard/ltr'
+    | '/dashboard/monitoreo'
     | '/dashboard/permisionarios'
     | '/dashboard/products'
     | '/dashboard/settings'
@@ -247,6 +267,7 @@ export interface FileRouteTypes {
     | '/dashboard/asignacion'
     | '/dashboard/clientes'
     | '/dashboard/ltr'
+    | '/dashboard/monitoreo'
     | '/dashboard/permisionarios'
     | '/dashboard/products'
     | '/dashboard/settings'
@@ -259,6 +280,7 @@ export interface FileRouteTypes {
     | '/dashboard/asignacion'
     | '/dashboard/clientes'
     | '/dashboard/ltr'
+    | '/dashboard/monitoreo'
     | '/dashboard/permisionarios'
     | '/dashboard/products'
     | '/dashboard/settings'
@@ -300,6 +322,7 @@ export const routeTree = rootRoute
         "/dashboard/asignacion",
         "/dashboard/clientes",
         "/dashboard/ltr",
+        "/dashboard/monitoreo",
         "/dashboard/permisionarios",
         "/dashboard/products",
         "/dashboard/settings",
@@ -317,6 +340,10 @@ export const routeTree = rootRoute
     },
     "/dashboard/ltr": {
       "filePath": "dashboard/ltr.tsx",
+      "parent": "/dashboard"
+    },
+    "/dashboard/monitoreo": {
+      "filePath": "dashboard/monitoreo.tsx",
       "parent": "/dashboard"
     },
     "/dashboard/permisionarios": {

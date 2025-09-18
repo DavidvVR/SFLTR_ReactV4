@@ -8,6 +8,8 @@ import {
   ShoppingCart,
   Bell,
   HelpCircle,
+  Truck, 
+  Monitor, 
 } from "lucide-react";
 
 export interface NavigationItem {
@@ -37,17 +39,22 @@ export const navigationItems: NavigationItem[] = [
   {
     title: "Permisionarios",
     href: "/dashboard/permisionarios",
-    icon: ShoppingCart, // Assuming "ShoppingCart
+    icon: ShoppingCart, 
   },
   {
     title: "LTR",
     href: "/dashboard/ltr",
-    icon: "truck",
+    icon: Truck,
   },
   {
     title: "Asignación",
     href: "/dashboard/asignacion",
     icon: Users,
+  },
+  {
+    title: "Monitoreo",
+    href: "/dashboard/monitoreo",
+    icon: Monitor,
   },
   {
     title: "Settings",
