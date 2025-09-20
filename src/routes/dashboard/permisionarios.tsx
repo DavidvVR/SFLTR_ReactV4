@@ -234,48 +234,55 @@ function PermisionariosPage() {
   }
 
   return (
-    <div className="p-6 space-y-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-2xl font-bold">Permisionarios</h1>
-        <div className="flex items-center gap-2">
-          <Input
-            placeholder="Buscar por ID / RFC / Razón social / Alias"
-            value={q}
-            onChange={(e) => {
-              const v = e.target.value
-              setQ(v)
-              setRows(v ? searchLocal(v) : readAll())
-            }}
-            className="w-80"
+    <div className="p-6">
+      <div className="rounded-xl border bg-muted/30">
+        {/* Encabezado dentro del marco gris */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between p-4 border-b">
+          <h1 className="text-2xl font-bold">Permisionarios</h1>
+          <div className="flex items-center gap-2">
+            <Input
+              placeholder="Buscar por ID / RFC / Razón social / Alias"
+              value={q}
+              onChange={(e) => {
+                const v = e.target.value
+                setQ(v)
+                setRows(v ? searchLocal(v) : readAll())
+              }}
+              className="w-80"
+            />
+            <input
+              type="file"
+              ref={importFileRef}
+              onChange={handleFileImport}
+              className="hidden"
+              accept=".xlsx, .xls"
+            />
+            <Button variant="outline" className="gap-2" onClick={() => importFileRef.current?.click()}>
+              <FileUp className="h-4 w-4" />
+              Importar
+            </Button>
+            <Button variant="outline" className="gap-2" onClick={handleExportAll}>
+              <FileDown className="h-4 w-4" />
+              Exportar
+            </Button>
+            <Button className="gap-2" onClick={handleNew}>
+              <Plus className="h-4 w-4" />
+              Nuevo
+            </Button>
+          </div>
+        </div>
+
+        {/* Contenido dentro del marco gris */}
+        <div className="p-4">
+          <PermisionariosTable
+            rows={rows}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
           />
-          <input
-            type="file"
-            ref={importFileRef}
-            onChange={handleFileImport}
-            className="hidden"
-            accept=".xlsx, .xls"
-          />
-          <Button variant="outline" className="gap-2" onClick={() => importFileRef.current?.click()}>
-            <FileUp className="h-4 w-4" />
-            Importar
-          </Button>
-          <Button variant="outline" className="gap-2" onClick={handleExportAll}>
-            <FileDown className="h-4 w-4" />
-            Exportar
-          </Button>
-          <Button className="gap-2" onClick={handleNew}>
-            <Plus className="h-4 w-4" />
-            Nuevo
-          </Button>
         </div>
       </div>
 
-      <PermisionariosTable 
-        rows={rows} 
-        onEdit={handleEdit} 
-        onDelete={handleDelete} 
-      />
-
+      {/* Modales e inputs fuera del marco visual */}
       <PermisionarioModal
         open={open}
         onOpenChange={(v) => {
@@ -301,8 +308,8 @@ function PermisionariosPage() {
                 coEmail: editItem.coEmail ?? '',
                 coTel: editItem.coTel ?? '',
                 docs: editItem.docs ?? [],
-                unidades: editItem.unidades ?? [], // Agregar unidades
-                operadores: editItem.operadores ?? [], // Agregar operadores
+                unidades: editItem.unidades ?? [],
+                operadores: editItem.operadores ?? [],
               }
             : undefined
         }

@@ -1,6 +1,7 @@
 import * as React from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Plus, Upload, Download } from 'lucide-react'
 import { NuevoServicioSheet } from '@/features/asignacion/components/nuevo-servicio-sheet'
 import { ServiciosTable, type Servicio } from '@/features/asignacion/components/ServiciosTable'
@@ -180,6 +181,27 @@ export const Route = createFileRoute('/dashboard/asignacion')({
     const [servicioParaConfirmar, setServicioParaConfirmar] = React.useState<Servicio | null>(null)
     const [editingServicio, setEditingServicio] = React.useState<Servicio | null>(null)
     const fileInputRef = React.useRef<HTMLInputElement>(null)
+    const [q, setQ] = React.useState('')
+
+    const serviciosFiltrados = React.useMemo(() => {
+      const term = q.trim().toLowerCase()
+      if (!term) return servicios
+      return servicios.filter((s) => {
+        const vals = [
+          s.id,
+          (s as any).cliente,
+          (s as any).ruta,
+          (s as any).destino,
+          (s as any).operador,
+          (s as any).eco,
+          (s as any).placa,
+          (s as any).remolque,
+          (s as any).tipoFlota,
+          (s as any).tipoUnidad,
+        ]
+        return vals.some(v => String(v ?? '').toLowerCase().includes(term))
+      })
+    }, [q, servicios])
 
     // Cargar servicios desde localStorage al montar el componente
     React.useEffect(() => {
@@ -478,7 +500,27 @@ export const Route = createFileRoute('/dashboard/asignacion')({
 
           <div className="space-y-2">
             <h2 className="text-xl font-semibold">Servicios Activos</h2>
-            <ServiciosTable rows={servicios} onCancel={handleCancelarServicio} onEdit={handleEditClick} />
+            {/* Contenedor con buscador fijo y tabla scrolleable */}
+            <div className="rounded-md border h-[65vh] flex flex-col overflow-hidden">
+              {/* Buscador fijo dentro del margen del contenedor */}
+              <div className="p-2 sticky top-0 z-10 bg-background border-b">
+                <Input
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                  placeholder="Buscar por ID, Cliente, Ruta, Destino, Operador, Eco, Placa, Remolque..."
+                  aria-label="Buscar servicios"
+                />
+              </div>
+              {/* Tabla con scroll */}
+              <div className="flex-1 overflow-auto relative">
+                <ServiciosTable
+                  rows={serviciosFiltrados}
+                  onCancel={handleCancelarServicio}
+                  onEdit={handleEditClick}
+                  showSearch={false}
+                />
+              </div>
+            </div>
           </div>
         </div>
 

@@ -48,13 +48,14 @@ export interface Servicio {
   tarifa?: number
 }
 
-interface ServiciosTableProps {
+interface Props {
   rows: Servicio[]
-  onCancel?: (row: Servicio, motivo: string) => void // NUEVO
-  onEdit?: (row: Servicio) => void // NUEVO
+  onCancel: (row: Servicio, motivo: string) => void
+  onEdit: (row: Servicio) => void
+  showSearch?: boolean
 }
 
-export function ServiciosTable({ rows, onCancel, onEdit }: ServiciosTableProps) {
+export function ServiciosTable({ rows, onCancel, onEdit, showSearch = true }: Props) {
   const [cancelOpen, setCancelOpen] = React.useState(false)
   const [selectedRow, setSelectedRow] = React.useState<Servicio | null>(null)
   const [motivo, setMotivo] = React.useState<string>('')
@@ -87,95 +88,100 @@ export function ServiciosTable({ rows, onCancel, onEdit }: ServiciosTableProps) 
 
   return (
     <div className="rounded-md border">
-      {/* NUEVO: buscador */}
-      <div className="p-2">
-        <Input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Buscar por ID, Cliente, Ruta, Tipo de Flota, Tipo de Unidad, Placa, ECO"
-          aria-label="Buscar servicios"
-        />
-      </div>
+      {/* Buscador interno (opcional) */}
+      {showSearch && (
+        <div className="p-2">
+          <Input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Buscar por ID, Cliente, Ruta, Tipo de Flota, Tipo de Unidad, Placa, ECO"
+            aria-label="Buscar servicios"
+          />
+        </div>
+      )}
 
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-[100px]">ID</TableHead>
-            <TableHead>Cliente</TableHead>
-            <TableHead>Ruta</TableHead>
-            <TableHead>Tipo de Flota</TableHead>
-            <TableHead>Tipo de Unidad</TableHead>
-            <TableHead className="w-[80px] text-right">Acciones</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {filteredRows.length > 0 ? (
-            filteredRows.map((row) => (
-              <TableRow key={row.id}>
-                <TableCell className="font-mono text-xs">{row.id}</TableCell>
-                <TableCell>{row.cliente}</TableCell>
-                <TableCell>{row.ruta}</TableCell>
-                <TableCell>{row.tipoFlota}</TableCell>
-                <TableCell>{row.tipoUnidad}</TableCell>
-                <TableCell className="text-right">
-                  <div className="flex items-center justify-end gap-1">
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            className="h-8 w-8 p-0"
-                            aria-label="Cancelar viaje"
-                            onClick={() => openCancelDialog(row)} // NUEVO
-                          >
-                            <X className="h-4 w-4 text-red-500" />
+      <div className="w-full">
+        <Table className="min-w-full border-separate border-spacing-0">
+          <TableHeader className="sticky top-0 z-20 bg-background">
+            {/* Encabezado fijo */}
+            <TableRow>
+              <TableHead className="sticky top-0 z-20 bg-background w-[120px]">ID</TableHead>
+              <TableHead className="sticky top-0 z-20 bg-background">Cliente</TableHead>
+              <TableHead className="sticky top-0 z-20 bg-background">Ruta</TableHead>
+              <TableHead className="sticky top-0 z-20 bg-background">Tipo de Flota</TableHead>
+              <TableHead className="sticky top-0 z-20 bg-background">Tipo de Unidad</TableHead>
+              <TableHead className="sticky top-0 z-20 bg-background w-[100px] text-right">Acciones</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filteredRows.length > 0 ? (
+              filteredRows.map((row) => (
+                <TableRow key={row.id}>
+                  <TableCell className="font-mono text-xs">{row.id}</TableCell>
+                  <TableCell>{row.cliente}</TableCell>
+                  <TableCell>{row.ruta}</TableCell>
+                  <TableCell>{row.tipoFlota}</TableCell>
+                  <TableCell>{row.tipoUnidad}</TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              className="h-8 w-8 p-0"
+                              aria-label="Cancelar viaje"
+                              onClick={() => openCancelDialog(row)} // NUEVO
+                            >
+                              <X className="h-4 w-4 text-red-500" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent side="top">Cancelar viaje</TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+
+                      {/* NUEVO: Editar servicio */}
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              className="h-8 w-8 p-0"
+                              aria-label="Editar servicio"
+                              onClick={() => onEdit?.(row)}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent side="top">Editar servicio</TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" className="h-8 w-8 p-0">
+                            <span className="sr-only">Abrir menú</span>
+                            <MoreHorizontal className="h-4 w-4" />
                           </Button>
-                        </TooltipTrigger>
-                        <TooltipContent side="top">Cancelar viaje</TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-
-                    {/* NUEVO: Editar servicio */}
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            className="h-8 w-8 p-0"
-                            aria-label="Editar servicio"
-                            onClick={() => onEdit?.(row)}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent side="top">Editar servicio</TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <span className="sr-only">Abrir menú</span>
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem>Aqui podemos agregar mas opciones</DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem>Aqui podemos agregar mas opciones</DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={6} className="h-24 text-center">
+                  No hay servicios activos.
                 </TableCell>
               </TableRow>
-            ))
-          ) : (
-            <TableRow>
-              <TableCell colSpan={6} className="h-24 text-center">
-                No hay servicios activos.
-              </TableCell>
-            </TableRow>
-          )}
-        </TableBody>
-      </Table>
+            )}
+          </TableBody>
+        </Table>
+      </div>
 
       {/* Modal de confirmación de cancelación */}
       <Dialog open={cancelOpen} onOpenChange={setCancelOpen}>

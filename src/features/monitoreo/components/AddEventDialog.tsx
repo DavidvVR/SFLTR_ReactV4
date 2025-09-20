@@ -85,22 +85,21 @@ export function AddEventDialog({
     if (!selectedService) return null
     const cliente =
       selectedService.cliente?.nombreRazonSocial ??
-      selectedService.cliente?.razonSocial ??
-      selectedService.cliente?.nombre ??
+      selectedService.cliente?.nombreRazonSocial ??
+      '' ??
       ''
     const ruta =
       selectedService.ruta ??
-      selectedService.itinerario?.ruta ??
-      selectedService.route ??
+      '' // Replace with a valid property or keep as empty string
       ''
     const destino =
       selectedService.destino ??
-      selectedService.itinerario?.destino ??
-      selectedService.destinoNombre ??
-      selectedService.destino?.nombre ??
-      selectedService.destinos?.[0]?.nombre ??
-      selectedService.puntos?.destino?.nombre ??
-      selectedService.destinoDireccion ?? ''
+      '' ?? // Replace with a valid property or keep as empty string
+      '' ??
+      (selectedService.destino as { nombre?: string } | undefined)?.nombre ??
+      (selectedService.destino as { nombre?: string } | undefined)?.nombre ??
+      '' ?? // Replace with a valid property or keep as empty string
+      '' // Replace with a valid property or keep as empty string
     const operador =
       selectedService.operadores?.[0]?.nombre ??
       selectedService.operador?.nombre ??
@@ -140,6 +139,7 @@ export function AddEventDialog({
       setCoords('')
       setMessage('')
       setUbicacionRef('') // reset al cerrar
+      setEvidencias?.([]) // si existe el estado de evidencias, resetéalo
     }
   }, [open, initialServiceId, resolvedUserName])
 
@@ -176,6 +176,7 @@ export function AddEventDialog({
       message: message.trim() || undefined,
       coords: hasCoords ? { lat: parsed.lat as number, lng: parsed.lng as number } : undefined,
       user: user.trim() || undefined,
+      evidencias, // NUEVO: pasar archivos adjuntos al modal de confirmación
     }
     onSubmit(data)
   }
@@ -232,7 +233,6 @@ export function AddEventDialog({
                   <SelectContent>
                     <SelectItem value="Nota">Nota</SelectItem>
                     <SelectItem value="Ubicacion">Ubicación</SelectItem>
-                    <SelectItem value="Incidencia">Incidencia</SelectItem>
                     <SelectItem value="Estadia">Estadia</SelectItem>
                   </SelectContent>
                 </Select>

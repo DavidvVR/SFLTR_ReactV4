@@ -665,7 +665,7 @@ function ClientesPage() {
                                   <Eye className="h-4 w-4" />
                                 </Button>
                                 <input
-                                  ref={(el) => (fileRefs.current[key] = el)} type="file" className="hidden"
+                                  ref={(el) => { fileRefs.current[key] = el; }} type="file" className="hidden"
                                   onChange={(e) => onChangeFile(key, e.target.files?.[0] ?? null)} accept="application/pdf,image/*"
                                 />
                               </div>
