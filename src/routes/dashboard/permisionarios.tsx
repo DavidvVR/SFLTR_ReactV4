@@ -1,4 +1,3 @@
-// src/routes/dashboard/permisionarios.tsx
 import * as React from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
@@ -18,12 +17,11 @@ import {
   type DocRecord,
 } from '@/features/permisionarios/permisionarioslocal'
 
-// Importa xlsx solo en cliente cuando se necesite
-async function loadXLSX() {
-  // Entrada ESM que evita cpexcel en SSR
-  const xlsx = await import('xlsx/xlsx.mjs')
-  // No uses set_cptable ni imports a 'xlsx/dist/cpexcel.js'
-  return xlsx
+import { getXLSX } from '@/utils/xlsx'
+
+declare module 'xlsx/xlsx.mjs' {
+  import * as XLSX from 'xlsx';
+  export = XLSX;
 }
 
 export const Route = createFileRoute('/dashboard/permisionarios')({
@@ -47,7 +45,7 @@ function PermisionariosPage() {
 
   // Ejemplo: exportar archivo
   const handleExportAll = async () => {
-    const XLSX = await loadXLSX()
+    const XLSX = await getXLSX()
     const ws = XLSX.utils.json_to_sheet(rows)
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, 'Permisionarios')
@@ -58,12 +56,16 @@ function PermisionariosPage() {
   const handleFileImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-    const XLSX = await loadXLSX()
-    const buf = await file.arrayBuffer()
-    const wb = XLSX.read(buf, { type: 'array' })
-    const ws = wb.Sheets[wb.SheetNames[0]]
-    const rows = XLSX.utils.sheet_to_json(ws)
-    // ...procesar rows...
+    try {
+      const XLSX = await getXLSX()
+      const buf = await file.arrayBuffer()
+      const wb = XLSX.read(buf, { type: 'array' })
+      const ws = wb.Sheets[wb.SheetNames[0]]
+      const rows = XLSX.utils.sheet_to_json(ws)
+      // ...procesar rows...
+    } finally {
+      if (e.target) e.target.value = ''
+    }
   }
 
   function handleNew() {

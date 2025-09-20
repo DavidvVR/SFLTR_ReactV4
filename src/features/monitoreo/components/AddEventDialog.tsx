@@ -10,6 +10,10 @@ import { type ConfirmEventData } from './ConfirmEventDialog'
 import type { MonitoreoStatus, TrackingEventType } from '../types'
 import { FolderOpen } from 'lucide-react'
 
+
+
+
+
 // Helper local: obtiene el nombre del usuario desde localStorage/sessionStorage
 function getLoggedUserNameFromStorage(): string {
   const plain = localStorage.getItem('SFLTR_USER_NAME') || sessionStorage.getItem('SFLTR_USER_NAME')
@@ -83,42 +87,43 @@ export function AddEventDialog({
 
   const svcDetails = React.useMemo(() => {
     if (!selectedService) return null
+
     const cliente =
-      selectedService.cliente?.nombreRazonSocial ??
-      selectedService.cliente?.nombreRazonSocial ??
-      '' ??
-      ''
+      selectedService.cliente?.nombreRazonSocial ?? ''
+
     const ruta =
-      selectedService.ruta ??
-      '' // Replace with a valid property or keep as empty string
-      ''
+      selectedService.ruta ?? ''
+
     const destino =
-      selectedService.destino ??
-      '' ?? // Replace with a valid property or keep as empty string
-      '' ??
-      (selectedService.destino as { nombre?: string } | undefined)?.nombre ??
-      (selectedService.destino as { nombre?: string } | undefined)?.nombre ??
-      '' ?? // Replace with a valid property or keep as empty string
-      '' // Replace with a valid property or keep as empty string
+      typeof selectedService.destino === 'string'
+        ? selectedService.destino
+        : selectedService.destino?.nombre ?? ''
+
     const operador =
       selectedService.operadores?.[0]?.nombre ??
-      selectedService.operador?.nombre ??
-      ''
+      selectedService.operador?.nombre ?? ''
+
     const tipoServicio =
       selectedService.tipo ??
       selectedService.tipoServicio ??
-      selectedService.type ??
-      ''
+      selectedService.type ?? ''
+
     const eco =
       selectedService.unidades?.[0]?.eco ??
-      selectedService.unidad?.eco ??
-      ''
+      selectedService.unidad?.eco ?? ''
+
     const placas =
       selectedService.unidades?.[0]?.placa ??
-      selectedService.unidad?.placa ??
-      ''
+      selectedService.unidad?.placa ?? ''
+
     return { cliente, ruta, destino, operador, tipoServicio, eco, placas }
   }, [selectedService])
+
+
+
+
+
+
 
   // Prefill al abrir
   React.useEffect(() => {
