@@ -92,5 +92,16 @@
     "tailwindcss": "^4.1.8",
     "typescript": "^5.7.2",
     "vite-tsconfig-paths": "^5.1.4"
+  },
+  "pnpm": {
+    "allowedBuiltDependencies": [
+      "@parcel/watcher",
+      "@tailwindcss/oxide",
+      "core-js"
+    ]
+  },
+  "packageManager": "pnpm@9.12.3",
+  "engines": {
+    "node": ">=18 <=22"
   }
 }
