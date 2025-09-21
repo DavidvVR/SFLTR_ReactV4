@@ -97,26 +97,30 @@ export function AddEventDialog({
     const destino =
       typeof selectedService.destino === 'string'
         ? selectedService.destino
-        : selectedService.destino?.nombre ?? ''
+        : ((selectedService.destino as unknown) as { nombre?: string })?.nombre ?? ''
 
     const operador =
       selectedService.operadores?.[0]?.nombre ??
-      selectedService.operador?.nombre ?? ''
+      selectedService.operadores?.[0]?.nombre ?? ''
 
-    const tipoServicio =
-      selectedService.tipo ??
-      selectedService.tipoServicio ??
-      selectedService.type ?? ''
+    // Nuevo: detectar tipo de unidad
+    const tipoUnidad =
+      selectedService.unidades?.[0]?.tipoUnidad ??
+      selectedService.unidades?.[0]?.tipoUnidad ??
+      '' // Removed reference to 'tipo' as it does not exist in 'UnidadAsignada'
+      (selectedService as any).tipoUnidad ??
+      (selectedService as any).tipo_unidad ??
+      ''
 
     const eco =
       selectedService.unidades?.[0]?.eco ??
-      selectedService.unidad?.eco ?? ''
+      selectedService.unidades?.[0]?.eco ?? ''
 
     const placas =
       selectedService.unidades?.[0]?.placa ??
-      selectedService.unidad?.placa ?? ''
+      selectedService.unidades?.[0]?.placa ?? ''
 
-    return { cliente, ruta, destino, operador, tipoServicio, eco, placas }
+    return { cliente, ruta, destino, operador, tipoUnidad, eco, placas }
   }, [selectedService])
 
 
@@ -221,7 +225,7 @@ export function AddEventDialog({
                   <dt className="text-muted-foreground">Operador:</dt>
                   <dd className="truncate">{svcDetails.operador || '-'}</dd>
                   <dt className="text-muted-foreground">Tipo:</dt>
-                  <dd className="truncate">{svcDetails.tipoServicio || '-'}</dd>
+                  <dd className="truncate">{svcDetails.tipoUnidad || '-'}</dd>
                   <dt className="text-muted-foreground">Eco:</dt>
                   <dd className="truncate">{svcDetails.eco || '-'}</dd>
                   <dt className="text-muted-foreground">Placas:</dt>

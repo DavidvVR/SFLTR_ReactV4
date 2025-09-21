@@ -19,6 +19,10 @@ export function readAll(): PermisionarioForm[] {
   }
 }
 
+
+//
+
+
 // Escribe un array completo de permisionarios a localStorage
 function writeAll(data: PermisionarioForm[]): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data, null, 2))

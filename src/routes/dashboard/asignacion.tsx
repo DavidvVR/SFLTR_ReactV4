@@ -388,7 +388,7 @@ export const Route = createFileRoute('/dashboard/asignacion')({
           }
 
           const nuevosServicios: Servicio[] = []
-          importedData.forEach(row => {
+          importedData.forEach((row: Record<string, any>) => {
             const id = generateNextServiceId()
             const citaCargaValue = row['Cita de Carga']
             const citaCarga = citaCargaValue ? new Date(citaCargaValue) : undefined

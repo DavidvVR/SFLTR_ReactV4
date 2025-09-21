@@ -32,10 +32,10 @@ export function MonitoreoTable({ items, q, onQChange, onVerEventos }: Props) {
           aria-label="Buscar en monitoreo"
         />
       </div>
-      <Table>
-        <TableHeader>
+      <Table className="min-w-full border-separate border-spacing-0">
+        <TableHeader className="sticky top-0 z-20 bg-background">
           <TableRow>
-            <TableHead className="w-[120px]">ID</TableHead>
+            <TableHead className="sticky top-0 z-20 bg-background">ID</TableHead>
             <TableHead>Cliente</TableHead>
             <TableHead>Ruta</TableHead>
             <TableHead>Unidad</TableHead>

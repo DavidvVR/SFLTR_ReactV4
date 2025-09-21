@@ -60,18 +60,28 @@ export const Route = createFileRoute('/dashboard/monitoreo')({
     }
 
     return (
-      <div className="p-6 space-y-4">
+      <div className="p-6 flex flex-col gap-4 h-screen">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Monitoreo</h1>
             <p className="text-muted-foreground">Seguimiento de servicios por ID</p>
           </div>
           <div className="flex items-center gap-2">
-            <Button onClick={() => setOpen(true)}>Agregar evento</Button>
+            <Button onClick={() => setOpen(true)}>Agregar Evento.</Button>
           </div>
         </div>
 
-        <MonitoreoTable items={items} q={q} onQChange={setQ} onVerEventos={(id) => setInitialServiceId(id)} />
+        {/* Contenedor que llena el espacio disponible y hace scroll interno */}
+        <div className="flex-1 overflow-hidden rounded-md border">
+          <div className="h-full overflow-auto">
+            <MonitoreoTable
+              items={items}
+              q={q}
+              onQChange={setQ}
+              onVerEventos={(id) => setInitialServiceId(id)}
+            />
+          </div>
+        </div>
 
         <AddEventDialog
           open={open}
