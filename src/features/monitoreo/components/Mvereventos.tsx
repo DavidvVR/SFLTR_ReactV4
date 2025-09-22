@@ -14,6 +14,10 @@ export type LoggedEvent = {
   createdAt?: string | number | Date
 }
 
+
+
+
+
 type ItemWithEvents = {
   id?: string
   serviceId?: string

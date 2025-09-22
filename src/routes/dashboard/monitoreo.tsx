@@ -9,6 +9,9 @@ import { AddEventDialog } from '@/features/monitoreo/components/AddEventDialog'
 import { ViewEventsDialog } from '@/features/monitoreo/components/Mvereventos'
 import { ConfirmarCitaDialog } from '@/features/monitoreo/components/ConfirmarCitaDialog' // <-- 1. Importar el nuevo modal
 
+
+
+
 // Abreviaturas de estados MX
 const MX_STATE_ABBR: Record<string, string> = {
   'Aguascalientes': 'AGS',
