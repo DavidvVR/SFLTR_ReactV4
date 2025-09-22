@@ -141,7 +141,7 @@ export function updateCliente(
       ...prev.contactos,
       ...(patch.contactos ?? {}),
     },
-    docs: { ...(prev.docs ?? {}), ...(patch.docs ?? {}) },
+    docs: { ...(prev.docs ?? {}), ...(patch.docs ?? {}) } as DocsState,
     tarifas: patch.tarifas ?? prev.tarifas,
     comentarios: patch.comentarios ?? prev.comentarios,
     updatedAt: new Date().toISOString(),

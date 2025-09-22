@@ -23,7 +23,7 @@ export async function exportWorkbook(workbook: any, filename: string) {
 import { getXLSX as getXLSXClient } from '@/utils/xlsx'
 import { getXLSXServer } from '@/utils/xlsx.server'
 
-async function handleExportXLSX() {
+async function handleExportXLSX(rows: unknown[]) {
   const XLSX = await getXLSX()
   const ws = XLSX.utils.json_to_sheet(rows)
   const wb = XLSX.utils.book_new()

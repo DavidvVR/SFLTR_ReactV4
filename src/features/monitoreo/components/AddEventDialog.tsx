@@ -106,6 +106,7 @@ export function AddEventDialog({
     // Nuevo: detectar tipo de unidad
     const tipoUnidad =
       selectedService.unidades?.[0]?.tipoUnidad ??
+      (selectedService.unidades?.[0] as any)?.tipo ?? // Use 'as any' if the property exists dynamically
       selectedService.unidades?.[0]?.tipoUnidad ??
       '' // Removed reference to 'tipo' as it does not exist in 'UnidadAsignada'
       (selectedService as any).tipoUnidad ??

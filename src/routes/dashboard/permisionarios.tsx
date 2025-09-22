@@ -19,10 +19,7 @@ import {
 
 import { getXLSX } from '@/utils/xlsx'
 
-declare module 'xlsx/xlsx.mjs' {
-  import * as XLSX from 'xlsx';
-  export = XLSX;
-}
+import * as XLSX from 'xlsx';
 
 export const Route = createFileRoute('/dashboard/permisionarios')({
   component: PermisionariosPage,
@@ -60,9 +57,84 @@ function PermisionariosPage() {
       const XLSX = await getXLSX()
       const buf = await file.arrayBuffer()
       const wb = XLSX.read(buf, { type: 'array' })
-      const ws = wb.Sheets[wb.SheetNames[0]]
-      const rows = XLSX.utils.sheet_to_json(ws)
-      // ...procesar rows...
+
+      // Usa la hoja 'Permisionarios' o la primera
+      const sheetName = wb.Sheets['Permisionarios'] ? 'Permisionarios' : wb.SheetNames[0]
+      const ws = wb.Sheets[sheetName]
+      if (!ws) { alert('No se encontró una hoja válida en el XLSX.'); return }
+
+      const data = XLSX.utils.sheet_to_json<any>(ws)
+
+      // Indexar existentes por RFC normalizado
+      const existing = readAll()
+      const byRFC = new Map(existing
+        .filter(r => !!r.rfc)
+        .map(r => [r.rfc.trim().toUpperCase(), r] as const))
+
+      const pick = (row: any, keys: string[]) => {
+        for (const k of keys) {
+          if (row[k] !== undefined && row[k] !== null && `${row[k]}`.trim() !== '') return row[k]
+        }
+        return undefined
+      }
+
+      let created = 0, updated = 0
+      for (const row of data) {
+        const rfc = (pick(row, ['RFC', 'Rfc', 'rfc']) ?? '').toString().trim().toUpperCase()
+        const razonSocial = (pick(row, ['Razón Social', 'Razon Social', 'Nombre / Razón Social', 'Nombre', 'Razon']) ?? '').toString().trim()
+        if (!rfc || !razonSocial) continue
+
+        const alias = pick(row, ['Alias', 'alias']) ?? ''
+        const estatus = ((pick(row, ['Estatus', 'Status']) ?? 'Activo') === 'Inactivo') ? 'Inactivo' as const : 'Activo' as const
+        const domicilio = pick(row, ['Domicilio', 'Dirección', 'Direccion']) ?? ''
+
+        const payload: Permisionario = {
+          id: '', // se define abajo
+          rfc,
+          razonSocial,
+          alias,
+          estatus,
+          domicilio,
+          opNombre: pick(row, ['Op Nombre']) ?? '',
+          opEmail: pick(row, ['Op Email']) ?? '',
+          opTel: pick(row, ['Op Tel']) ?? '',
+          adNombre: pick(row, ['Ad Nombre']) ?? '',
+          adEmail: pick(row, ['Ad Email']) ?? '',
+          adTel: pick(row, ['Ad Tel']) ?? '',
+          coNombre: pick(row, ['Co Nombre']) ?? '',
+          coEmail: pick(row, ['Co Email']) ?? '',
+          coTel: pick(row, ['Co Tel']) ?? '',
+          docs: [],
+          unidades: [],
+          operadores: [],
+        }
+
+        const found = byRFC.get(rfc)
+        if (found) {
+          // Actualiza manteniendo id y datos no presentes en el archivo
+          upsert({
+            ...found,
+            ...payload,
+            id: found.id,
+            docs: found.docs ?? [],
+            unidades: found.unidades ?? [],
+            operadores: found.operadores ?? [],
+          })
+          updated++
+        } else {
+          upsert({
+            ...payload,
+            id: nextId(),
+          })
+          created++
+        }
+      }
+
+      refresh()
+      alert(`Importación completada.\nActualizados: ${updated}\nCreados: ${created}`)
+    } catch (err) {
+      console.error('Error al importar XLSX (permisionarios):', err)
+      alert('Hubo un problema al procesar el archivo.')
     } finally {
       if (e.target) e.target.value = ''
     }
