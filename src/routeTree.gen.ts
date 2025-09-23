@@ -22,6 +22,7 @@ import { Route as DashboardLtrImport } from './routes/dashboard/ltr'
 import { Route as DashboardClientesImport } from './routes/dashboard/clientes'
 import { Route as DashboardAsignacionImport } from './routes/dashboard/asignacion'
 import { Route as DashboardLTRIndexImport } from './routes/dashboard/LTR/index'
+import { Route as DashboardDBTestIndexImport } from './routes/Dashboard/DBTest/index'
 
 // Create/Update Routes
 
@@ -89,6 +90,12 @@ const DashboardLTRIndexRoute = DashboardLTRIndexImport.update({
   id: '/LTR/',
   path: '/LTR/',
   getParentRoute: () => DashboardRouteRoute,
+} as any)
+
+const DashboardDBTestIndexRoute = DashboardDBTestIndexImport.update({
+  id: '/Dashboard/DBTest/',
+  path: '/Dashboard/DBTest/',
+  getParentRoute: () => rootRoute,
 } as any)
 
 // Populate the FileRoutesByPath interface
@@ -165,6 +172,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardIndexImport
       parentRoute: typeof DashboardRouteImport
     }
+    '/Dashboard/DBTest/': {
+      id: '/Dashboard/DBTest/'
+      path: '/Dashboard/DBTest'
+      fullPath: '/Dashboard/DBTest'
+      preLoaderRoute: typeof DashboardDBTestIndexImport
+      parentRoute: typeof rootRoute
+    }
     '/dashboard/LTR/': {
       id: '/dashboard/LTR/'
       path: '/LTR'
@@ -216,6 +230,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/products': typeof DashboardProductsRoute
   '/dashboard/settings': typeof DashboardSettingsRoute
   '/dashboard/': typeof DashboardIndexRoute
+  '/Dashboard/DBTest': typeof DashboardDBTestIndexRoute
   '/dashboard/LTR': typeof DashboardLTRIndexRoute
 }
 
@@ -229,6 +244,7 @@ export interface FileRoutesByTo {
   '/dashboard/products': typeof DashboardProductsRoute
   '/dashboard/settings': typeof DashboardSettingsRoute
   '/dashboard': typeof DashboardIndexRoute
+  '/Dashboard/DBTest': typeof DashboardDBTestIndexRoute
   '/dashboard/LTR': typeof DashboardLTRIndexRoute
 }
 
@@ -244,6 +260,7 @@ export interface FileRoutesById {
   '/dashboard/products': typeof DashboardProductsRoute
   '/dashboard/settings': typeof DashboardSettingsRoute
   '/dashboard/': typeof DashboardIndexRoute
+  '/Dashboard/DBTest/': typeof DashboardDBTestIndexRoute
   '/dashboard/LTR/': typeof DashboardLTRIndexRoute
 }
 
@@ -260,6 +277,7 @@ export interface FileRouteTypes {
     | '/dashboard/products'
     | '/dashboard/settings'
     | '/dashboard/'
+    | '/Dashboard/DBTest'
     | '/dashboard/LTR'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -272,6 +290,7 @@ export interface FileRouteTypes {
     | '/dashboard/products'
     | '/dashboard/settings'
     | '/dashboard'
+    | '/Dashboard/DBTest'
     | '/dashboard/LTR'
   id:
     | '__root__'
@@ -285,6 +304,7 @@ export interface FileRouteTypes {
     | '/dashboard/products'
     | '/dashboard/settings'
     | '/dashboard/'
+    | '/Dashboard/DBTest/'
     | '/dashboard/LTR/'
   fileRoutesById: FileRoutesById
 }
@@ -292,11 +312,13 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DashboardRouteRoute: typeof DashboardRouteRouteWithChildren
+  DashboardDBTestIndexRoute: typeof DashboardDBTestIndexRoute
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DashboardRouteRoute: DashboardRouteRouteWithChildren,
+  DashboardDBTestIndexRoute: DashboardDBTestIndexRoute,
 }
 
 export const routeTree = rootRoute
@@ -310,7 +332,8 @@ export const routeTree = rootRoute
       "filePath": "__root.tsx",
       "children": [
         "/",
-        "/dashboard"
+        "/dashboard",
+        "/Dashboard/DBTest/"
       ]
     },
     "/": {
@@ -361,6 +384,9 @@ export const routeTree = rootRoute
     "/dashboard/": {
       "filePath": "dashboard/index.tsx",
       "parent": "/dashboard"
+    },
+    "/Dashboard/DBTest/": {
+      "filePath": "Dashboard/DBTest/index.tsx"
     },
     "/dashboard/LTR/": {
       "filePath": "dashboard/LTR/index.tsx",
