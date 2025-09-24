@@ -122,6 +122,7 @@ export default function PermisionarioModal({
 
   const [tab, setTab] = React.useState<'datos' | 'docs' | 'unidades' | 'operadores'>('datos')
   const [form, setForm] = React.useState<PermisionarioForm>({ ...EMPTY })
+  const [isSaving, setIsSaving] = React.useState(false)
 
   // NUEVO: estado de domicilio desglosado
   const [domCalle, setDomCalle] = React.useState('')
@@ -203,7 +204,7 @@ export default function PermisionarioModal({
       
       setForm({
         ...EMPTY,
-        id: getNextId(),
+        id: '',
         docs: DEFAULT_DOCS.map(d => ({ ...d })),
       });
       resetDomicilio()
@@ -214,8 +215,7 @@ export default function PermisionarioModal({
     (v: PermisionarioForm[K]) =>
       setForm((f) => ({ ...f, [k]: v }))
 
-  function handleSave() {
-    // CORRECCIÓN: Asegurarse de que todos los campos, incluyendo los arrays, se pasen al guardar.
+  async function handleSave() {
     const payload: PermisionarioForm = {
       ...form,
       razonSocial: form.razonSocial.trim(),
@@ -223,9 +223,16 @@ export default function PermisionarioModal({
       rfc: form.rfc.trim().toUpperCase(),
       domicilio: composeDomicilio(), // NUEVO: compone el domicilio final
     }
-    
-    onSave(payload)
-    onOpenChange(false) // Cerrar el modal después de guardar
+    try {
+      setIsSaving(true)
+      await Promise.resolve(onSave?.(payload))
+      onOpenChange(false)
+    } catch (e) {
+      console.error(e)
+      alert('Error al guardar.')
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   function setDocUrl(key: DocKey, url?: string, fileName?: string) {
@@ -804,8 +811,8 @@ export default function PermisionarioModal({
                 <Button variant="outline" onClick={() => onOpenChange(false)}>
                   Cancelar
                 </Button>
-                <Button onClick={handleSave}>
-                  Guardar
+                <Button onClick={handleSave} disabled={isSaving}>
+                  {isSaving ? 'Guardando…' : 'Guardar'}
                 </Button>
               </div>
             </div>

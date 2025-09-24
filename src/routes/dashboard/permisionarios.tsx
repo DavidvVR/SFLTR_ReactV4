@@ -2,9 +2,9 @@ import * as React from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Plus, FileDown, FileUp } from 'lucide-react' // <-- 1. Importar FileUp
+import { Plus, FileDown, FileUp } from 'lucide-react'
 
-import PermisionarioModal from '@/features/permisionarios/permisionario-modal'
+import PermisionarioModal, { type PermisionarioForm } from '@/features/permisionarios/permisionario-modal'
 import PermisionariosTable from '@/features/permisionarios/components/PermisionariosTable'
 
 import {
@@ -12,10 +12,12 @@ import {
   upsert,
   search as searchLocal,
   nextId,
-  removeById, // Importar la función de eliminar
+  removeById,
   type Permisionario,
   type DocRecord,
 } from '@/features/permisionarios/permisionarioslocal'
+
+import { listPermisionarios, addPermisionario, updatePermisionario, removePermisionario } from '@/features/permisionarios/permisionariosSupabase'
 
 import { getXLSX } from '@/utils/xlsx'
 
@@ -27,20 +29,23 @@ export const Route = createFileRoute('/dashboard/permisionarios')({
 
 function PermisionariosPage() {
   const [open, setOpen] = React.useState(false)
-  const [editItem, setEditItem] = React.useState<Permisionario | null>(null)
+  const [editing, setEditing] = React.useState<PermisionarioForm | null>(null)
   const [rows, setRows] = React.useState<Permisionario[]>([])
   const [q, setQ] = React.useState('')
-  const importFileRef = React.useRef<HTMLInputElement | null>(null) // <-- 2. Ref para input de archivo
+  const importFileRef = React.useRef<HTMLInputElement | null>(null)
 
   React.useEffect(() => {
-    setRows(readAll())
+    load()
   }, [])
+
+  async function load() {
+    try { setRows(await listPermisionarios()) } catch (e) { console.error(e) }
+  }
 
   function refresh(query = q) {
     setRows(query ? searchLocal(query) : readAll())
   }
 
-  // Ejemplo: exportar archivo
   const handleExportAll = async () => {
     const XLSX = await getXLSX()
     const ws = XLSX.utils.json_to_sheet(rows)
@@ -49,7 +54,6 @@ function PermisionariosPage() {
     XLSX.writeFile(wb, 'permisionarios.xlsx')
   }
 
-  // Ejemplo: importar archivo
   const handleFileImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -58,14 +62,12 @@ function PermisionariosPage() {
       const buf = await file.arrayBuffer()
       const wb = XLSX.read(buf, { type: 'array' })
 
-      // Usa la hoja 'Permisionarios' o la primera
       const sheetName = wb.Sheets['Permisionarios'] ? 'Permisionarios' : wb.SheetNames[0]
       const ws = wb.Sheets[sheetName]
       if (!ws) { alert('No se encontró una hoja válida en el XLSX.'); return }
 
       const data = XLSX.utils.sheet_to_json<any>(ws)
 
-      // Indexar existentes por RFC normalizado
       const existing = readAll()
       const byRFC = new Map(existing
         .filter(r => !!r.rfc)
@@ -89,7 +91,7 @@ function PermisionariosPage() {
         const domicilio = pick(row, ['Domicilio', 'Dirección', 'Direccion']) ?? ''
 
         const payload: Permisionario = {
-          id: '', // se define abajo
+          id: '',
           rfc,
           razonSocial,
           alias,
@@ -111,7 +113,6 @@ function PermisionariosPage() {
 
         const found = byRFC.get(rfc)
         if (found) {
-          // Actualiza manteniendo id y datos no presentes en el archivo
           upsert({
             ...found,
             ...payload,
@@ -141,19 +142,48 @@ function PermisionariosPage() {
   }
 
   function handleNew() {
-    setEditItem({
-      id: nextId(),
+    setEditing({
+      id: '',
       rfc: '',
       razonSocial: '',
       alias: '',
       estatus: 'Activo',
+      domicilio: '',
+      opNombre: '',
+      opEmail: '',
+      opTel: '',
+      adNombre: '',
+      adEmail: '',
+      adTel: '',
+      coNombre: '',
+      coEmail: '',
+      coTel: '',
+      docs: [],
+      unidades: [],
+      operadores: [],
     })
     setOpen(true)
   }
 
   function handleEdit(row: Permisionario) {
-    setEditItem(row)
+    setEditing(row)
     setOpen(true)
+  }
+
+  async function handleSave(p: PermisionarioForm) {
+    try {
+      if (p.id) {
+        await updatePermisionario(p.id, p)
+      } else {
+        await addPermisionario(p)
+      }
+      await load()
+      setOpen(false)
+      setEditing(null)
+    } catch (e) {
+      console.error('Error guardando permisionario', e)
+      alert('Error guardando. Revisa la consola.')
+    }
   }
 
   function handleDelete(id: string) {
@@ -161,36 +191,9 @@ function PermisionariosPage() {
     refresh()
   }
 
-  function handleSave(data: {
-    id: string
-    rfc: string
-    razonSocial: string
-    alias: string
-    estatus: 'Activo' | 'Inactivo'
-    domicilio: string
-    opNombre: string;  opEmail: string;  opTel: string
-    adNombre: string;  adEmail: string;  adTel: string
-    coNombre: string;  coEmail: string;  coTel: string
-    docs: DocRecord[]
-    unidades: any[] // Agregar unidades
-    operadores: any[] // Agregar operadores
-  }) {
-    const merged: Permisionario = {
-      ...(editItem ?? {}),
-      ...data,
-      id: data.id || nextId(),
-      rfc: (data.rfc || '').toUpperCase(),
-    }
-    upsert(merged)
-    setOpen(false)
-    setEditItem(null)
-    refresh()
-  }
-
   return (
     <div className="p-6">
       <div className="rounded-xl border bg-muted/30">
-        {/* Encabezado dentro del marco gris */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between p-4 border-b">
           <h1 className="text-2xl font-bold">Permisionarios</h1>
           <div className="flex items-center gap-2">
@@ -226,7 +229,6 @@ function PermisionariosPage() {
           </div>
         </div>
 
-        {/* Contenido dentro del marco gris */}
         <div className="p-4">
           <PermisionariosTable
             rows={rows}
@@ -236,37 +238,10 @@ function PermisionariosPage() {
         </div>
       </div>
 
-      {/* Modales e inputs fuera del marco visual */}
       <PermisionarioModal
         open={open}
-        onOpenChange={(v) => {
-          setOpen(v)
-          if (!v) setEditItem(null)
-        }}
-        initialValue={
-          editItem
-            ? {
-                id: editItem.id,
-                rfc: editItem.rfc,
-                razonSocial: editItem.razonSocial,
-                alias: editItem.alias ?? '',
-                estatus: editItem.estatus ?? 'Activo',
-                domicilio: editItem.domicilio ?? '',
-                opNombre: editItem.opNombre ?? '',
-                opEmail: editItem.opEmail ?? '',
-                opTel: editItem.opTel ?? '',
-                adNombre: editItem.adNombre ?? '',
-                adEmail: editItem.adEmail ?? '',
-                adTel: editItem.adTel ?? '',
-                coNombre: editItem.coNombre ?? '',
-                coEmail: editItem.coEmail ?? '',
-                coTel: editItem.coTel ?? '',
-                docs: editItem.docs ?? [],
-                unidades: editItem.unidades ?? [],
-                operadores: editItem.operadores ?? [],
-              }
-            : undefined
-        }
+        onOpenChange={setOpen}
+        initialValue={editing ?? undefined}
         onSave={handleSave}
       />
     </div>
