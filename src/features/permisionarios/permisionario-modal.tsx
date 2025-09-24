@@ -59,6 +59,7 @@ export type Unidad = {
   marca?: string
   anio?: number | ''
   permisoSCT?: string
+  numPoliza?: string // NUEVO: No. de Póliza
 }
 
 // ---- Operadores: tipos ----
@@ -122,11 +123,34 @@ export default function PermisionarioModal({
   const [tab, setTab] = React.useState<'datos' | 'docs' | 'unidades' | 'operadores'>('datos')
   const [form, setForm] = React.useState<PermisionarioForm>({ ...EMPTY })
 
+  // NUEVO: estado de domicilio desglosado
+  const [domCalle, setDomCalle] = React.useState('')
+  const [domNum, setDomNum] = React.useState('')
+  const [domColonia, setDomColonia] = React.useState('')
+  const [domMunicipio, setDomMunicipio] = React.useState('')
+  const [domEstado, setDomEstado] = React.useState('')
+  const [domCP, setDomCP] = React.useState('')
+
+  function resetDomicilio() {
+    setDomCalle(''); setDomNum(''); setDomColonia(''); setDomMunicipio(''); setDomEstado(''); setDomCP('')
+  }
+  function composeDomicilio() {
+    const parts: string[] = []
+    if (domCalle) parts.push(domCalle)
+    if (domNum) parts.push(domNum)
+    if (domColonia) parts.push(domColonia)
+    const loc = [domMunicipio, domEstado].filter(Boolean).join(', ')
+    if (loc) parts.push(loc)
+    if (domCP) parts.push(`C.P. ${domCP}`)
+    return parts.join(', ')
+  }
+
   React.useEffect(() => {
     if (!open) {
       // Limpia el formulario al cerrar para evitar mostrar datos viejos brevemente
       setForm({ ...EMPTY });
       setTab('datos'); // Reset tab to datos
+      resetDomicilio()
       return;
     }
 
@@ -169,6 +193,10 @@ export default function PermisionarioModal({
 
       console.log('🎯 NUEVO FORM DATA:', JSON.stringify(newFormData, null, 2));
       setForm(newFormData);
+
+      // Prefill básico: coloca la dirección completa en "calle" para no perderla
+      setDomCalle(initialValue.domicilio ?? '')
+      setDomNum(''); setDomColonia(''); setDomMunicipio(''); setDomEstado(''); setDomCP('')
     } else {
       // --- MODO CREACIÓN ---
       console.log('MODO CREACIÓN - Nuevo permisionario');
@@ -178,6 +206,7 @@ export default function PermisionarioModal({
         id: getNextId(),
         docs: DEFAULT_DOCS.map(d => ({ ...d })),
       });
+      resetDomicilio()
     }
   }, [open, initialValue]);
 
@@ -192,6 +221,7 @@ export default function PermisionarioModal({
       razonSocial: form.razonSocial.trim(),
       alias: form.alias.trim(),
       rfc: form.rfc.trim().toUpperCase(),
+      domicilio: composeDomicilio(), // NUEVO: compone el domicilio final
     }
     
     onSave(payload)
@@ -250,6 +280,7 @@ export default function PermisionarioModal({
     marca: '',
     anio: '',
     permisoSCT: '',
+    numPoliza: '', // NUEVO
   }
 
   const emptyOperador: Operador = {
@@ -452,9 +483,48 @@ export default function PermisionarioModal({
                     </Select>
                   </div>
 
+                  {/* Domicilio desglosado */}
                   <div className="space-y-2">
-                    <Label htmlFor="domicilio">Domicilio</Label>
-                    <Input id="domicilio" value={form.domicilio} onChange={(e) => update('domicilio')(e.target.value)} placeholder="Calle, número, colonia, CP, ciudad, estado" />
+                    <Label>Domicilio</Label>
+                    <div className="grid gap-3">
+                      <div className="grid gap-2">
+                        <Label htmlFor="domCalle" className="text-xs">Calle</Label>
+                        <Input id="domCalle" value={domCalle} onChange={(e) => setDomCalle(e.target.value)} placeholder="Ej. Av. Principal" />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="grid gap-2">
+                          <Label htmlFor="domNum" className="text-xs">Núm Ext/Int</Label>
+                          <Input id="domNum" value={domNum} onChange={(e) => setDomNum(e.target.value)} placeholder="123 / Int 4B" />
+                        </div>
+                        <div className="grid gap-2">
+                          <Label htmlFor="domColonia" className="text-xs">Colonia</Label>
+                          <Input id="domColonia" value={domColonia} onChange={(e) => setDomColonia(e.target.value)} placeholder="Col. Centro" />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-3">
+                        <div className="grid gap-2">
+                          <Label htmlFor="domMunicipio" className="text-xs">Municipio</Label>
+                          <Input id="domMunicipio" value={domMunicipio} onChange={(e) => setDomMunicipio(e.target.value)} placeholder="Municipio" />
+                        </div>
+                        <div className="grid gap-2">
+                          <Label htmlFor="domEstado" className="text-xs">Estado</Label>
+                          <Input id="domEstado" value={domEstado} onChange={(e) => setDomEstado(e.target.value)} placeholder="Estado" />
+                        </div>
+                        <div className="grid gap-2">
+                          <Label htmlFor="domCP" className="text-xs">CP</Label>
+                          <Input
+                            id="domCP"
+                            inputMode="numeric"
+                            maxLength={5}
+                            value={domCP}
+                            onChange={(e) => setDomCP(e.target.value.replace(/\D/g, '').slice(0, 5))}
+                            placeholder="00000"
+                          />
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -818,6 +888,19 @@ export default function PermisionarioModal({
                 <SelectItem value="Rabón">Rabón</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+
+          {/* NUEVO: No. de Póliza (entre Tipo y Aseguradora) */}
+          <div className="space-y-2">
+            <Label htmlFor="uNumPoliza">No. de Póliza</Label>
+            <Input
+              id="uNumPoliza"
+              value={unitDraft.numPoliza || ''}
+              onChange={(e) =>
+                setUnitDraft((u) => ({ ...u, numPoliza: e.target.value }))
+              }
+              placeholder="Ej. QRO4567890"
+            />
           </div>
 
           <div className="space-y-2">
