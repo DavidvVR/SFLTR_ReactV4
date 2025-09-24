@@ -26,22 +26,18 @@ export function getSupabase(): SupabaseClient /*<Database>*/ {
       throw new Error('Configura VITE_SUPABASE_URL (http/https) y VITE_SUPABASE_ANON_KEY en tu .env')
     }
 
-    client = createClient/*<Database>*/(SUPABASE_URL!, SUPABASE_ANON_KEY, {
+    client = createClient(SUPABASE_URL!, SUPABASE_ANON_KEY, {
       auth: {
-        // En SSR no persistas sesión ni intentes leerla de la URL
         persistSession: isBrowser,
         autoRefreshToken: isBrowser,
         detectSessionInUrl: isBrowser,
       },
-      // Puedes añadir headers globales si lo deseas
       global: {
-        headers: {
-          'x-application-name': 'SFLTR_ReactV4',
-        },
+        headers: { 'x-application-name': 'SFLTR_ReactV4' },
       },
     })
   }
-  return client
+  return client // <-- importante
 }
 
 /**

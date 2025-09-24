@@ -28,8 +28,8 @@ export async function addCliente(input: Partial<NewCliente>): Promise<Cliente> {
     docs: input.docs ?? {},
     tarifas: input.tarifas ?? [],
     comentarios: input.comentarios ?? '',
-    createdAt: now,
-    updatedAt: now,
+    created_at: now,         // snake_case
+    updated_at: now,         // snake_case
   }
 
   const { data, error } = await supabase
@@ -54,7 +54,7 @@ export async function updateCliente(
   const row: any = {
     ...patch,
     rfc: patch.rfc ? patch.rfc.toUpperCase() : undefined,
-    updatedAt: new Date().toISOString(),
+    updated_at: new Date().toISOString(), // snake_case
   }
 
   const { data, error } = await supabase
@@ -74,7 +74,7 @@ export async function listClientes(): Promise<Cliente[]> {
   const { data, error } = await supabase
     .from('clientes')
     .select('*')
-    .order('createdAt', { ascending: false })
+    .order('created_at', { ascending: false }) // usar snake_case
   if (error) throw error
   return (data ?? []) as Cliente[]
 }
