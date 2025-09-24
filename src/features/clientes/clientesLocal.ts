@@ -163,6 +163,10 @@ export function clearAllClientes() {
   save([]);
 }
 
+export function setAllClientes(list: Cliente[]) {
+  save(list);
+}
+
 /** Búsqueda simple por nombre/RFC */
 export function searchClientes(q: string): Cliente[] {
   const s = (q ?? "").trim().toLowerCase();
@@ -173,3 +177,39 @@ export function searchClientes(q: string): Cliente[] {
     return nombre.includes(s) || rfc.includes(s);
   });
 }
+
+/** SQL Schema for clientes table */
+export const SQL_SCHEMA = `
+create table if not exists clientes (
+  id text primary key,
+  nombre text not null,
+  estatus text not null check (estatus in ('Activo','Inactivo')),
+  rfc text,
+  direccion text,
+  contactos jsonb,
+  docs jsonb,
+  tarifas jsonb,
+  comentarios text,
+  "createdAt" timestamptz not null default now(),
+  "updatedAt" timestamptz not null default now()
+);
+
+-- RLS (para desarrollo; ajusta en producción)
+alter table clientes enable row level security;
+
+create policy "anon select clientes"
+  on clientes for select
+  using (true);
+
+create policy "anon insert clientes"
+  on clientes for insert
+  with check (true);
+
+create policy "anon update clientes"
+  on clientes for update
+  using (true);
+
+create policy "anon delete clientes"
+  on clientes for delete
+  using (true);
+`;

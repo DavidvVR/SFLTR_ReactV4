@@ -22,9 +22,11 @@ import {
   listClientes,
   removeCliente,
   updateCliente,
-  type DocKey,
-  type Tarifa as TarifaModel,
-  type Cliente,
+} from "@/features/clientes/clientesSupabase"
+import type {
+  DocKey,
+  Tarifa as TarifaModel,
+  Cliente,
 } from "@/features/clientes/clientesLocal"
 import { getXLSX } from '@/utils/xlsx'
 import ClienteFormSheet, { type ClienteFormValues } from '@/features/clientes/components/ClienteFormSheet'
@@ -33,6 +35,11 @@ import ClienteFormSheet, { type ClienteFormValues } from '@/features/clientes/co
 function genId() {
   try { return crypto.randomUUID() } catch { return `t_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}` }
 }
+
+
+
+
+
 
 const EMPTY_DOCS: Record<DocKey, boolean> = {
   acta: false, poder: false, compDomicilio: false, csf: false, ine: false, contrato: false,
@@ -88,8 +95,16 @@ function ClientesPage() {
 
   const importFileRef = React.useRef<HTMLInputElement | null>(null)
 
-  React.useEffect(() => { loadClientes() }, [])
-  function loadClientes() { setClientes(listClientes()) }
+  React.useEffect(() => { void loadClientes() }, [])
+  async function loadClientes() {
+    try {
+      const rows = await listClientes()
+      setClientes(rows)
+    } catch (e) {
+      console.error('Error cargando clientes:', e)
+      setClientes([])
+    }
+  }
 
   // Filtra clientes basado en la búsqueda 'q'
   const filteredClientes = React.useMemo(() => {
@@ -107,7 +122,7 @@ function ClientesPage() {
   const [open, setOpen] = React.useState(false)
   const [editingCliente, setEditingCliente] = React.useState<Cliente | null>(null)
 
-  React.useEffect(() => { setClientes(listClientes()) }, [])
+  React.useEffect(() => { void loadClientes() }, [])
 
   function startNewCliente() { setEditingCliente(null); setOpen(true) }
   function startEditCliente(id: string) {
@@ -115,8 +130,11 @@ function ClientesPage() {
     setEditingCliente(c); setOpen(true)
   }
 
-  function confirmRemoveCliente(id: string) {
-    try { removeCliente(id); loadClientes() } catch (e) { console.error(e) }
+  async function confirmRemoveCliente(id: string) {
+    try {
+      await removeCliente(id)
+      await loadClientes()
+    } catch (e) { console.error(e) }
   }
 
   async function handleSaveCliente(data: ClienteFormValues) {
@@ -124,11 +142,11 @@ function ClientesPage() {
       if (editingCliente?.id || data.id) {
         const id = editingCliente?.id ?? data.id!
         const { id: _omit, ...payload } = data
-        updateCliente(id, payload as any)
+        await updateCliente(id, payload as any)
       } else {
-        addCliente(data as any)
+        await addCliente(data as any)
       }
-      loadClientes()
+      await loadClientes()
       setOpen(false)
       setEditingCliente(null)
     } catch (e) {
@@ -152,7 +170,7 @@ function ClientesPage() {
       const importedTarifas = tarifasSheet ? XLSX.utils.sheet_to_json<any>(tarifasSheet) : []
 
       // Indexar clientes existentes por RFC normalizado
-      const existing = listClientes()
+      const existing = await listClientes()
       const byRFC = new Map(
         existing
           .filter(c => !!c.rfc)
@@ -200,19 +218,18 @@ function ClientesPage() {
 
         const found = byRFC.get(rfcUpper)
         if (found) {
-          // Actualizar cliente existente (reemplaza tarifas con las del archivo)
-          updateCliente(found.id, {
+          await updateCliente(found.id, {
             ...baseData,
             tarifas: clienteTarifas,
-            // Preserva docs existentes
-            docs: found.docs,
+            docs: found.docs, // preserva docs existentes
           } as any)
           updated++
         } else {
-          // Crear nuevo cliente
-          addCliente({
+          await addCliente({
             ...baseData,
-            docs: EMPTY_DOCS,
+            docs: {
+              acta: false, poder: false, compDomicilio: false, csf: false, ine: false, contrato: false,
+            },
             tarifas: clienteTarifas,
           } as any)
           created++
@@ -220,7 +237,7 @@ function ClientesPage() {
       }
 
       alert(`Importación finalizada.\nActualizados: ${updated}\nCreados: ${created}`)
-      loadClientes()
+      await loadClientes()
     } catch (error) {
       console.error("Error al importar el archivo:", error)
       alert("Hubo un problema al procesar el archivo XLSX.")

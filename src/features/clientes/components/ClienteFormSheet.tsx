@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Plus, Folder, Eye, Trash2, Pencil } from 'lucide-react'
 import type { DocKey, Tarifa as TarifaModel, Cliente } from '@/features/clientes/clientesLocal'
+import { addCliente, updateCliente } from '@/features/clientes/clientesSupabase'
 
 type ClienteErrors = { nombre?: string; estatus?: string; rfc?: string }
 
@@ -55,11 +56,41 @@ interface Props {
   open: boolean
   onOpenChange: (v: boolean) => void
   initialValue?: Cliente | null
-  onSave: (data: ClienteFormValues) => void
+}
+
+export function ClienteFormContainer(props: Props) {
+  async function onSave(data: ClienteFormValues) {
+    if (data.id) {
+      await updateCliente(data.id, {
+        nombre: data.nombre,
+        estatus: data.estatus,
+        rfc: data.rfc?.toUpperCase(),
+        direccion: data.direccion ?? undefined,
+        contactos: data.contactos ?? {},
+        docs: data.docs ?? { acta: false, poder: false, compDomicilio: false, csf: false, ine: false, contrato: false },
+        tarifas: data.tarifas ?? [],
+        comentarios: data.comentarios ?? '',
+      })
+    } else {
+      await addCliente({
+        nombre: data.nombre,
+        estatus: data.estatus,
+        rfc: data.rfc?.toUpperCase(),
+        direccion: data.direccion ?? undefined,
+        contactos: data.contactos ?? {},
+        docs: data.docs ?? { acta: false, poder: false, compDomicilio: false, csf: false, ine: false, contrato: false },
+        tarifas: data.tarifas ?? [],
+        comentarios: data.comentarios ?? '',
+      })
+    }
+  }
+
+  return <ClienteFormSheet {...props} onSave={onSave} />
 }
 
 export default function ClienteFormSheet({ open, onOpenChange, initialValue, onSave }: Props) {
   const isEditing = !!initialValue?.id
+  const [isSaving, setIsSaving] = React.useState(false)
 
   // Avisos inline
   const [flash, setFlash] = React.useState<{ type: 'success' | 'error'; msg: string } | null>(null)
@@ -205,17 +236,13 @@ export default function ClienteFormSheet({ open, onOpenChange, initialValue, onS
 
   function handleCancel() { onOpenChange(false); setFlash(null) }
 
-  function handleSave() {
+  async function handleSave() {
     const v = validateCliente()
     setErrors(v)
-    if (v.nombre || v.estatus || v.rfc) {
-      showFlash('error', 'Corrige los campos requeridos.')
-      return
-    }
+    if (v.nombre || v.estatus || v.rfc) { showFlash('error', 'Corrige los campos requeridos.'); return }
     const payload: ClienteFormValues = {
       id: initialValue?.id,
-      nombre,
-      estatus,
+      nombre, estatus,
       rfc: rfc || undefined,
       direccion: direccion || undefined,
       contactos: {
@@ -227,10 +254,18 @@ export default function ClienteFormSheet({ open, onOpenChange, initialValue, onS
         acta: docsFlags.acta, poder: docsFlags.poder, compDomicilio: docsFlags.compDomicilio,
         csf: docsFlags.csf, ine: docsFlags.ine, contrato: docsFlags.contrato,
       },
-      tarifas,
-      comentarios: comentarios || '',
+      tarifas, comentarios: comentarios || '',
     }
-    onSave(payload)
+    try {
+      setIsSaving(true)
+      await Promise.resolve(onSave(payload)) // soporta onSave async o sync
+      showFlash('success', 'Cliente guardado.')
+      onOpenChange(false)
+    } catch (e: any) {
+      showFlash('error', e?.message || 'Error al guardar.')
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   return (
@@ -244,8 +279,8 @@ export default function ClienteFormSheet({ open, onOpenChange, initialValue, onS
               <SheetDescription>Completa los datos generales, documentación y tarifas.</SheetDescription>
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" type="button" onClick={handleCancel}>Cancelar</Button>
-              <Button type="button" onClick={handleSave}>Guardar</Button>
+              <Button variant="outline" type="button" onClick={handleCancel} disabled={isSaving}>Cancelar</Button>
+              <Button type="button" onClick={handleSave} disabled={isSaving}>{isSaving ? 'Guardando…' : 'Guardar'}</Button>
             </div>
           </div>
           {flash && (
