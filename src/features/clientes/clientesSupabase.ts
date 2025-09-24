@@ -13,31 +13,23 @@ function generateClienteId(): string {
  * Crea un cliente en Supabase.
  * Devuelve el registro insertado con los campos tal como quedaron en la BD.
  */
-export async function addCliente(input: Partial<NewCliente>): Promise<Cliente> {
-  if (!input?.nombre || !input?.estatus) throw new Error('Campos requeridos: nombre, estatus')
+export async function addCliente(input: NewCliente): Promise<Cliente> {
   const supabase = getSupabase()
   const now = new Date().toISOString()
-
   const row = {
-    id: generateClienteId(),
+    // no mandes id: lo genera el trigger con LTR-CL-XXX
     nombre: input.nombre,
     estatus: input.estatus,
-    rfc: input.rfc?.toUpperCase() ?? null,
+    rfc: input.rfc ? input.rfc.toUpperCase() : null,
     direccion: input.direccion ?? null,
     contactos: input.contactos ?? {},
     docs: input.docs ?? {},
     tarifas: input.tarifas ?? [],
     comentarios: input.comentarios ?? '',
-    created_at: now,         // snake_case
-    updated_at: now,         // snake_case
+    created_at: now,
+    updated_at: now,
   }
-
-  const { data, error } = await supabase
-    .from('clientes')
-    .insert(row)
-    .select('*')
-    .single()
-
+  const { data, error } = await supabase.from('clientes').insert(row).select('*').single()
   if (error) throw error
   return data as Cliente
 }
