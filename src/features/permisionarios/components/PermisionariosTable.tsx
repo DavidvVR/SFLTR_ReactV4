@@ -20,7 +20,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
 import { Pencil, Trash2 } from 'lucide-react'
-import type { Permisionario } from '../permisionarioslocal'
+import type { Permisionario } from '../types'
 
 interface PermisionariosTableProps {
   rows: Permisionario[]
