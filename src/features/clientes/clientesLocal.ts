@@ -20,7 +20,7 @@ export type DocKey =
   | "ine"
   | "contrato";
 
-export type DocsState = Record<DocKey, boolean>;
+export type DocsState = Record<DocKey, boolean> & { link?: string }
 
 export interface Tarifa {
   id: string;

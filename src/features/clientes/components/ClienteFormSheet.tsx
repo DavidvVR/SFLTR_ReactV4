@@ -47,7 +47,7 @@ export interface ClienteFormValues {
     administracion?: { nombre?: string; email?: string; tel?: string }
     comercial?: { nombre?: string; email?: string; tel?: string }
   }
-  docs?: Record<DocKey, boolean>
+  docs?: Record<DocKey, boolean> & { link?: string }
   tarifas: TarifaModel[]
   comentarios?: string
 }
@@ -102,7 +102,14 @@ export default function ClienteFormSheet({ open, onOpenChange, initialValue, onS
   const [nombre, setNombre] = React.useState('')
   const [estatus, setEstatus] = React.useState<'Activo' | 'Inactivo'>('Activo')
   const [rfc, setRfc] = React.useState('')
-  const [direccion, setDireccion] = React.useState('')
+  // NUEVO: domicilio desglosado
+  const [calle, setCalle] = React.useState('')
+  const [numExtInt, setNumExtInt] = React.useState('')
+  const [colonia, setColonia] = React.useState('')
+  const [municipio, setMunicipio] = React.useState('')
+  const [estado, setEstado] = React.useState('')
+  const [cp, setCp] = React.useState('')
+  const [direccion, setDireccion] = React.useState('') // mantiene compatibilidad para lectura inicial
   const [opNombre, setOpNombre] = React.useState('')
   const [opEmail, setOpEmail] = React.useState('')
   const [opTel, setOpTel] = React.useState('')
@@ -134,6 +141,9 @@ export default function ClienteFormSheet({ open, onOpenChange, initialValue, onS
     const url = URL.createObjectURL(f)
     window.open(url, '_blank', 'noopener,noreferrer')
   }
+
+  const [docsLink, setDocsLink] = React.useState<string>(initialValue?.docs?.link ?? '')
+  React.useEffect(() => { setDocsLink(initialValue?.docs?.link ?? '') }, [initialValue])
 
   // Tarifas
   const [tarifas, setTarifas] = React.useState<TarifaModel[]>([])
@@ -187,8 +197,20 @@ export default function ClienteFormSheet({ open, onOpenChange, initialValue, onS
 
   const [comentarios, setComentarios] = React.useState('')
 
+  function composeDireccion() {
+    const parts: string[] = []
+    if (calle) parts.push(calle)
+    if (numExtInt) parts.push(numExtInt)
+    if (colonia) parts.push(colonia)
+    const loc = [municipio, estado].filter(Boolean).join(', ')
+    if (loc) parts.push(loc)
+    if (cp) parts.push(`C.P. ${cp}`)
+    return parts.join(', ')
+  }
+
   function resetForm() {
-    setNombre(''); setEstatus('Activo'); setRfc(''); setDireccion('')
+    setNombre(''); setEstatus('Activo'); setRfc('');
+    setDireccion(''); setCalle(''); setNumExtInt(''); setColonia(''); setMunicipio(''); setEstado(''); setCp('');
     setOpNombre(''); setOpEmail(''); setOpTel('')
     setAdNombre(''); setAdEmail(''); setAdTel('')
     setCoNombre(''); setCoEmail(''); setCoTel('')
@@ -203,7 +225,10 @@ export default function ClienteFormSheet({ open, onOpenChange, initialValue, onS
       setNombre(initialValue.nombre)
       setEstatus(initialValue.estatus)
       setRfc(initialValue.rfc || '')
+      // Prefill básico: coloca la dirección completa en "calle" para no perderla
       setDireccion(initialValue.direccion || '')
+      setCalle(initialValue.direccion || '')
+      setNumExtInt(''); setColonia(''); setMunicipio(''); setEstado(''); setCp('')
       setOpNombre(initialValue.contactos?.operaciones?.nombre || '')
       setOpEmail(initialValue.contactos?.operaciones?.email || '')
       setOpTel(initialValue.contactos?.operaciones?.tel || '')
@@ -240,11 +265,12 @@ export default function ClienteFormSheet({ open, onOpenChange, initialValue, onS
     const v = validateCliente()
     setErrors(v)
     if (v.nombre || v.estatus || v.rfc) { showFlash('error', 'Corrige los campos requeridos.'); return }
+    const direccionFinal = composeDireccion()
     const payload: ClienteFormValues = {
       id: initialValue?.id,
       nombre, estatus,
       rfc: rfc || undefined,
-      direccion: direccion || undefined,
+      direccion: direccionFinal || undefined,
       contactos: {
         operaciones: { nombre: opNombre || '', email: opEmail || '', tel: opTel || '' },
         administracion: { nombre: adNombre || '', email: adEmail || '', tel: adTel || '' },
@@ -253,6 +279,7 @@ export default function ClienteFormSheet({ open, onOpenChange, initialValue, onS
       docs: {
         acta: docsFlags.acta, poder: docsFlags.poder, compDomicilio: docsFlags.compDomicilio,
         csf: docsFlags.csf, ine: docsFlags.ine, contrato: docsFlags.contrato,
+        link: docsLink || undefined,
       },
       tarifas, comentarios: comentarios || '',
     }
@@ -270,7 +297,7 @@ export default function ClienteFormSheet({ open, onOpenChange, initialValue, onS
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full sm:max-w-3xl p-0">
+      <SheetContent side="right" className="w-full sm:max-w-3xl p-0 h-[100dvh] overflow-hidden">
         {/* Header */}
         <div className="sticky top-0 z-10 bg-background border-b px-6 py-4">
           <div className="flex items-center justify-between">
@@ -293,7 +320,7 @@ export default function ClienteFormSheet({ open, onOpenChange, initialValue, onS
         </div>
 
         {/* Contenido */}
-        <div className="px-6 pb-6 pt-4 flex h-[calc(100vh-6rem)] flex-col">
+        <div className="px-6 pb-6 pt-4 flex flex-1 min-h-0 flex-col">
           <Tabs defaultValue="datos" className="flex flex-1 flex-col">
             <TabsList className="w-full justify-start overflow-x-auto">
               <TabsTrigger value="datos">Datos Generales</TabsTrigger>
@@ -303,7 +330,7 @@ export default function ClienteFormSheet({ open, onOpenChange, initialValue, onS
             </TabsList>
 
             {/* DATOS GENERALES */}
-            <TabsContent value="datos" className="flex-1 overflow-y-auto">
+            <TabsContent value="datos" className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
               <form className="space-y-6 py-4" onSubmit={(e) => { e.preventDefault(); handleSave() }}>
                 <section className="space-y-4">
                   <h3 className="text-base font-semibold">Datos Generales</h3>
@@ -330,9 +357,52 @@ export default function ClienteFormSheet({ open, onOpenChange, initialValue, onS
                       <Input id="inpRFC" value={rfc} onChange={(e) => setRfc(e.target.value.toUpperCase())} placeholder="Ej. ABC123456789" aria-invalid={!!errors.rfc} />
                       {errors.rfc && <p className="text-xs text-destructive">{errors.rfc}</p>}
                     </div>
-                    <div className="grid gap-2 md:col-span-2">
-                      <Label htmlFor="txtDireccion">Dirección</Label>
-                      <Textarea id="txtDireccion" value={direccion} onChange={(e) => setDireccion(e.target.value)} placeholder="Calle, número, colonia, municipio, estado, CP" className="h-24" />
+                    <div className="md:col-span-2 grid gap-4">
+                      <div className="grid gap-2">
+                        <Label htmlFor="inpCalle">Calle</Label>
+                        <Input id="inpCalle" value={calle} onChange={(e) => setCalle(e.target.value)} placeholder="Ej. Av. Principal" />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="grid gap-2">
+                          <Label htmlFor="inpNum">Num Ext/Int</Label>
+                          <Input id="inpNum" value={numExtInt} onChange={(e) => setNumExtInt(e.target.value)} placeholder="123 / Int 4B" />
+                        </div>
+                        <div className="grid gap-2">
+                          <Label htmlFor="inpCol">Colonia</Label>
+                          <Input id="inpCol" value={colonia} onChange={(e) => setColonia(e.target.value)} placeholder="Col. Centro" />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-4">
+                        <div className="grid gap-2">
+                          <Label htmlFor="inpMun">Municipio</Label>
+                          <Input id="inpMun" value={municipio} onChange={(e) => setMunicipio(e.target.value)} placeholder="Municipio" />
+                        </div>
+                        <div className="grid gap-2">
+                          <Label htmlFor="selEstado">Estado</Label>
+                          <select
+                            id="selEstado"
+                            value={estado}
+                            onChange={(e) => setEstado(e.target.value)}
+                            className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                          >
+                            <option value="">Seleccione un estado…</option>
+                            {MX_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
+                          </select>
+                        </div>
+                        <div className="grid gap-2">
+                          <Label htmlFor="inpCP">CP</Label>
+                          <Input
+                            id="inpCP"
+                            inputMode="numeric"
+                            maxLength={5}
+                            value={cp}
+                            onChange={(e) => setCp(e.target.value.replace(/\D/g, '').slice(0, 5))}
+                            placeholder="00000"
+                          />
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </section>
@@ -370,7 +440,20 @@ export default function ClienteFormSheet({ open, onOpenChange, initialValue, onS
             {/* DOCUMENTACIÓN */}
             <TabsContent value="docs" className="flex-1 overflow-y-auto">
               <div className="space-y-4 py-4">
-                <h3 className="text-base font-semibold">Documentación</h3>
+                {/* NUEVO: Link a Drive/OneDrive */}
+                <div className="grid gap-2">
+                  <Label htmlFor="docsLink">Link (Drive/OneDrive)</Label>
+                  <Input
+                    id="docsLink"
+                    value={docsLink}
+                    onChange={(e) => setDocsLink(e.target.value)}
+                    placeholder="https://drive.google.com/... o https://1drv.ms/..."
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Pega un enlace compartido a la carpeta o archivo de documentos.
+                  </p>
+                </div>
+
                 <Table>
                   <TableHeader>
                     <TableRow>
