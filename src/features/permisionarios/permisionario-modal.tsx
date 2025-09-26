@@ -212,6 +212,42 @@ export default function PermisionarioModal({
       setForm((f) => ({ ...f, [k]: v }))
 
   async function handleSave() {
+    // Sanitizar docs: quitar blob: (no persisten) y dejar solo URLs reales
+    const cleanDocs = form.docs.map(d => {
+      if (!d.url) return d
+      if (d.url.startsWith('blob:')) {
+        // Ignorar blob para persistencia (necesitas subir a storage si quieres conservarlo)
+        return { ...d, url: undefined, fileName: undefined }
+      }
+      return d
+    })
+
+    // Asegurar IDs y limpiar unidades vacías
+    const cleanUnidades = form.unidades
+      .filter(u => u.placas || u.tipo) // descarta totalmente filas vacías
+      .map(u => ({
+        ...u,
+        id: u.id || crypto.randomUUID(),
+        // Normaliza campos requeridos por tu tabla (pon placeholder si están vacíos)
+        tarjetaUrl: u.tarjetaUrl && !u.tarjetaUrl.startsWith('blob:') ? u.tarjetaUrl : null,
+        numPoliza: u.numPoliza || null,
+        aseguradora: u.aseguradora || null,
+        vencePoliza: u.vencePoliza || null,
+        marca: u.marca || null,
+        anio: u.anio || null,
+        permisoSCT: u.permisoSCT || null,
+      }))
+
+    // Asegurar IDs y limpiar operadores vacíos
+    const cleanOperadores = form.operadores
+      .filter(op => op.nombre) // descarta vacíos
+      .map(op => ({
+        ...op,
+        id: op.id || crypto.randomUUID(),
+        licenciaUrl: op.licenciaUrl && !op.licenciaUrl.startsWith('blob:') ? op.licenciaUrl : null,
+        aptoMedicoUrl: op.aptoMedicoUrl && !op.aptoMedicoUrl.startsWith('blob:') ? op.aptoMedicoUrl : null,
+      }))
+
     const payload = {
       ...form,
       id: form.id?.trim() || undefined, // undefined => INSERT
@@ -225,7 +261,19 @@ export default function PermisionarioModal({
       domMunicipio,
       domEstado,
       domCP,
+      docs: cleanDocs,
+      unidades: cleanUnidades,
+      operadores: cleanOperadores,
     }
+
+    // Validación mínima si tu tabla exige NOT NULL
+    for (const u of payload.unidades) {
+      if (!u.tarjetaUrl || !u.placas || !u.tipo) {
+        alert('Cada unidad debe tener Tarjeta (URL), Placas y Tipo antes de guardar. Completa o elimina la unidad.');
+        return
+      }
+    }
+
     try {
       setIsSaving(true)
       await Promise.resolve(onSave?.(payload as any))
