@@ -253,3 +253,85 @@ export async function removePermisionario(id: string): Promise<void> {
   const { error } = await supabase.from('permisionarios').delete().eq('id', id)
   if (error) throw error
 }
+
+export async function searchPermisionarios(q: string): Promise<PermisionarioForm[]> {
+  const supabase = getSupabase()
+  const term = q.trim()
+  if (!term) return listPermisionarios()
+
+  // Búsqueda case-insensitive en id, rfc, razón social y alias
+  const pattern = `%${term}%`
+  const { data: parents, error } = await supabase
+    .from('permisionarios')
+    .select('*')
+    .or(
+      [
+        `id.ilike.${pattern}`,
+        `rfc.ilike.${pattern}`,
+        `razon_social.ilike.${pattern}`,
+        `alias.ilike.${pattern}`
+      ].join(',')
+    )
+    .order('created_at', { ascending: false })
+
+  if (error) throw error
+  if (!parents?.length) return []
+
+  const ids = parents.map(p => p.id)
+  const [{ data: units }, { data: ops }] = await Promise.all([
+    supabase.from('permisionario_unidades').select('*').in('permisionario_id', ids),
+    supabase.from('permisionario_operadores').select('*').in('permisionario_id', ids),
+  ])
+
+  const unitsBy = new Map<string, any[]>()
+  const opsBy = new Map<string, any[]>()
+  ;(units ?? []).forEach(u => {
+    const arr = unitsBy.get(u.permisionario_id) || []
+    arr.push(u); unitsBy.set(u.permisionario_id, arr)
+  })
+  ;(ops ?? []).forEach(o => {
+    const arr = opsBy.get(o.permisionario_id) || []
+    arr.push(o); opsBy.set(o.permisionario_id, arr)
+  })
+
+  return parents.map((p: any) => ({
+    id: p.id,
+    razonSocial: p.razon_social,
+    alias: p.alias ?? '',
+    rfc: p.rfc ?? '',
+    estatus: p.estatus,
+    domicilio: '',
+    opNombre: p.op_nombre ?? '', opEmail: p.op_email ?? '', opTel: p.op_tel ?? '',
+    adNombre: p.ad_nombre ?? '', adEmail: p.ad_email ?? '', adTel: p.ad_tel ?? '',
+    coNombre: p.co_nombre ?? '', coEmail: p.co_email ?? '', coTel: p.co_tel ?? '',
+    docs: buildDocsFromColumns(p),
+    unidades: (unitsBy.get(p.id) ?? []).map((u: any) => ({
+      id: u.id,
+      tarjetaUrl: u.tarjeta_url || undefined,
+      tarjetaNombre: u.tarjeta_nombre || undefined,
+      placas: u.placas,
+      eco: u.eco || undefined,
+      tipo: u.tipo,
+      numPoliza: u.num_poliza || undefined,
+      aseguradora: u.aseguradora || undefined,
+      vencePoliza: u.vence_poliza || undefined,
+      marca: u.marca || undefined,
+      anio: u.anio ?? '',
+      permisoSCT: u.permiso_sct || undefined,
+      polizaUrl: u.poliza_url || undefined,
+      polizaNombre: u.poliza_nombre || undefined,
+    })),
+    operadores: (opsBy.get(p.id) ?? []).map((o: any) => ({
+      id: o.id,
+      nombre: o.nombre,
+      numLicencia: o.num_licencia || undefined,
+      licenciaUrl: o.licencia_url || undefined,
+      licenciaNombre: o.licencia_nombre || undefined,
+      venceLicencia: o.vence_licencia || undefined,
+      aptoMedicoUrl: o.apto_medico_url || undefined,
+      aptoMedicoNombre: o.apto_medico_nombre || undefined,
+      venceAptoMedico: o.vence_apto_medico || undefined,
+      rfc: o.rfc || undefined,
+    })),
+  }))
+}
