@@ -216,16 +216,23 @@ export default function PermisionarioModal({
       setForm((f) => ({ ...f, [k]: v }))
 
   async function handleSave() {
-    const payload: PermisionarioForm = {
+    const payload = {
       ...form,
+      id: form.id?.trim() || undefined, // si está vacío no se envía
       razonSocial: form.razonSocial.trim(),
       alias: form.alias.trim(),
       rfc: form.rfc.trim().toUpperCase(),
-      domicilio: composeDomicilio(), // NUEVO: compone el domicilio final
+      domicilio: composeDomicilio(),
+      domCalle,
+      domNum,
+      domColonia,
+      domMunicipio,
+      domEstado,
+      domCP,
     }
     try {
       setIsSaving(true)
-      await Promise.resolve(onSave?.(payload))
+      await Promise.resolve(onSave?.(payload as any))
       onOpenChange(false)
     } catch (e) {
       console.error(e)

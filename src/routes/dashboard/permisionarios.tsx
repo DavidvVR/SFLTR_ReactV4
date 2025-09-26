@@ -87,7 +87,7 @@ function PermisionariosPage() {
         if (!rfc || !razonSocial) continue
 
         const alias = pick(row, ['Alias', 'alias']) ?? ''
-        const estatus = ((pick(row, ['Estatus', 'Status']) ?? 'Activo') === 'Inactivo') ? 'Inactivo' as const : 'Activo' as const
+        const estatus: 'Activo' | 'Inactivo' = ((pick(row, ['Estatus', 'Status']) ?? 'Activo') === 'Inactivo') ? 'Inactivo' : 'Activo'
         const domicilio = pick(row, ['Domicilio', 'Dirección', 'Direccion']) ?? ''
 
         const payload: Permisionario = {
@@ -147,7 +147,7 @@ function PermisionariosPage() {
       rfc: '',
       razonSocial: '',
       alias: '',
-      estatus: 'Activo',
+      estatus: 'Activo' as 'Activo' | 'Inactivo',
       domicilio: '',
       opNombre: '',
       opEmail: '',
