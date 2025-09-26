@@ -109,10 +109,6 @@ const EMPTY: PermisionarioForm = {
   operadores: [],
 }
 
-function getNextId() {
-  return `ID-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
-}
-
 export default function PermisionarioModal({
   open,
   onOpenChange,
@@ -172,7 +168,7 @@ export default function PermisionarioModal({
       console.log('MODO EDICIÓN - initialValue:', initialValue);
 
       const newFormData = {
-        id: initialValue.id ?? getNextId(),
+        id: initialValue.id ?? '',
         razonSocial: initialValue.razonSocial ?? '',
         alias: initialValue.alias ?? '',
         rfc: initialValue.rfc ?? '',
@@ -218,7 +214,7 @@ export default function PermisionarioModal({
   async function handleSave() {
     const payload = {
       ...form,
-      id: form.id?.trim() || undefined, // si está vacío no se envía
+      id: form.id?.trim() || undefined, // undefined => INSERT
       razonSocial: form.razonSocial.trim(),
       alias: form.alias.trim(),
       rfc: form.rfc.trim().toUpperCase(),
@@ -234,9 +230,9 @@ export default function PermisionarioModal({
       setIsSaving(true)
       await Promise.resolve(onSave?.(payload as any))
       onOpenChange(false)
-    } catch (e) {
-      console.error(e)
-      alert('Error al guardar.')
+    } catch (e: any) {
+      console.error('Supabase error:', e?.message || e, e)
+      alert(e?.message || 'Error al guardar.')
     } finally {
       setIsSaving(false)
     }
@@ -461,10 +457,12 @@ export default function PermisionarioModal({
               <TabsContent value="datos" className="m-0 space-y-6">
                 {/* ID / RFC / Razón social / Alias */}
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="id">ID</Label>
-                    <Input id="id" value={form.id} onChange={(e) => update('id')(e.target.value)} placeholder="LTR-PR-0001" />
-                  </div>
+                  {form.id && (
+                    <div className="space-y-2">
+                      <Label htmlFor="id">ID</Label>
+                      <Input id="id" value={form.id} readOnly />
+                    </div>
+                  )}
 
                   <div className="space-y-2">
                     <Label htmlFor="rfc">RFC</Label>

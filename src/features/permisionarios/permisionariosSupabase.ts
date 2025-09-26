@@ -26,22 +26,19 @@ function toRow(p: Partial<PermisionarioForm>) {
   }
 }
 
-function toParentRow(p: PermisionarioPersistInput) {
+function toParentRow(p: any) {
   return {
     id: p.id || undefined,
     razon_social: p.razonSocial,
     rfc: p.rfc.toUpperCase(),
     alias: p.alias || null,
     estatus: p.estatus,
-
-    // Campos de domicilio separados (no usar p.domicilio compuesto para la BD)
     calle: p.domCalle || '',
     num_extint: p.domNum || '',
     colonia: p.domColonia || '',
     municipio: p.domMunicipio || '',
     estado: p.domEstado || '',
     cp: p.domCP || '00000',
-
     op_nombre: p.opNombre || '',
     op_email: p.opEmail || '',
     op_tel: p.opTel || '',
@@ -51,14 +48,12 @@ function toParentRow(p: PermisionarioPersistInput) {
     co_nombre: p.coNombre || '',
     co_email: p.coEmail || '',
     co_tel: p.coTel || '',
-
-    acta_url: p.docs.find(d=>d.key==='acta')?.url || null,
-    poder_url: p.docs.find(d=>d.key==='poder')?.url || null,
-    comprobante_domicilio_url: p.docs.find(d=>d.key==='comprobanteDomicilio')?.url || null,
-    constancia_fiscal_url: p.docs.find(d=>d.key==='constanciaFiscal')?.url || null,
-    ine_rep_url: p.docs.find(d=>d.key==='ineRep')?.url || null,
-    contrato_url: p.docs.find(d=>d.key==='contrato')?.url || null,
-
+    acta_url: p.docs?.find((d: { key: string; url: string }) => d.key === 'acta')?.url || null,
+    poder_url: p.docs?.find((d: { key: string; url: string }) => d.key === 'poder')?.url || null,
+    comprobante_domicilio_url: p.docs?.find((d: { key: string; url: string }) => d.key === 'comprobanteDomicilio')?.url || null,
+    constancia_fiscal_url: p.docs?.find((d: { key: string; url: string }) => d.key === 'constanciaFiscal')?.url || null,
+    ine_rep_url: p.docs?.find((d: { key: string; url: string }) => d.key === 'ineRep')?.url || null,
+    contrato_url: p.docs?.find((d: { key: string; url: string }) => d.key === 'contrato')?.url || null,
     updated_at: new Date().toISOString(),
     created_at: new Date().toISOString(),
   }
@@ -155,57 +150,22 @@ export async function listPermisionarios(): Promise<PermisionarioForm[]> {
   }))
 }
 
-export async function addPermisionario(input: Omit<PermisionarioForm, 'id'> & { id?: string }): Promise<string> {
-  const supabase = getSupabase()
-  const { data, error } = await supabase
-    .from('permisionarios')
-    .insert({ ...toRow(input), created_at: new Date().toISOString() })
-    .select('id')
-    .single()
+export async function addPermisionario(p: any) {
+  const s = getSupabase()
+  const { data, error } = await s.from('permisionarios').insert(toParentRow(p)).select('id').single()
   if (error) throw error
-  const id = data!.id as string
-
-  // hijos
-  if (input.unidades?.length) {
-    const rows = input.unidades.map(u => unitToRow(u, id))
-    const { error: ue } = await supabase.from('permisionario_unidades').upsert(rows, { onConflict: 'id' })
-    if (ue) throw ue
-  }
-  if (input.operadores?.length) {
-    const rows = input.operadores.map(o => opToRow(o, id))
-    const { error: oe } = await supabase.from('permisionario_operadores').upsert(rows, { onConflict: 'id' })
-    if (oe) throw oe
-  }
+  const id = data!.id
+  // hijos...
   return id
 }
 
-export async function updatePermisionario(id: string, patch: Partial<PermisionarioForm>): Promise<void> {
-  const supabase = getSupabase()
-  const { error } = await supabase
-    .from('permisionarios')
-    .update(toRow(patch))
-    .eq('id', id)
+export async function updatePermisionario(id: string, p: any) {
+  const s = getSupabase()
+  const row = toParentRow(p)
+  delete (row as any).created_at
+  const { error } = await s.from('permisionarios').update(row).eq('id', id)
   if (error) throw error
-
-  // Reemplazo simple de hijos: borra y vuelve a insertar (suficiente para empezar)
-  if (patch.unidades) {
-    const { error: delU } = await supabase.from('permisionario_unidades').delete().eq('permisionario_id', id)
-    if (delU) throw delU
-    if (patch.unidades.length) {
-      const rows = patch.unidades.map(u => unitToRow(u, id))
-      const { error: insU } = await supabase.from('permisionario_unidades').insert(rows)
-      if (insU) throw insU
-    }
-  }
-  if (patch.operadores) {
-    const { error: delO } = await supabase.from('permisionario_operadores').delete().eq('permisionario_id', id)
-    if (delO) throw delO
-    if (patch.operadores.length) {
-      const rows = patch.operadores.map(o => opToRow(o, id))
-      const { error: insO } = await supabase.from('permisionario_operadores').insert(rows)
-      if (insO) throw insO
-    }
-  }
+  // hijos...
 }
 
 export async function removePermisionario(id: string): Promise<void> {

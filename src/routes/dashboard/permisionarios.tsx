@@ -141,27 +141,8 @@ function PermisionariosPage() {
     }
   }
 
-  function handleNew() {
-    setEditing({
-      id: '',
-      rfc: '',
-      razonSocial: '',
-      alias: '',
-      estatus: 'Activo' as 'Activo' | 'Inactivo',
-      domicilio: '',
-      opNombre: '',
-      opEmail: '',
-      opTel: '',
-      adNombre: '',
-      adEmail: '',
-      adTel: '',
-      coNombre: '',
-      coEmail: '',
-      coTel: '',
-      docs: [],
-      unidades: [],
-      operadores: [],
-    })
+  function newPermisionario() {
+    setEditing(null)         // IMPORTANTE: null/undefined => modo creación
     setOpen(true)
   }
 
@@ -170,19 +151,15 @@ function PermisionariosPage() {
     setOpen(true)
   }
 
-  async function handleSave(p: PermisionarioForm) {
+  async function handleSave(p: any) {
     try {
-      if (p.id) {
-        await updatePermisionario(p.id, p)
-      } else {
-        await addPermisionario(p)
-      }
+      if (p.id) await updatePermisionario(p.id, p)
+      else await addPermisionario(p)
       await load()
-      setOpen(false)
-      setEditing(null)
+      setOpen(false); setEditing(null)
     } catch (e) {
-      console.error('Error guardando permisionario', e)
-      alert('Error guardando. Revisa la consola.')
+      console.error(e)
+      alert('Error guardando (ver consola).')
     }
   }
 
@@ -222,7 +199,7 @@ function PermisionariosPage() {
               <FileDown className="h-4 w-4" />
               Exportar
             </Button>
-            <Button className="gap-2" onClick={handleNew}>
+            <Button className="gap-2" onClick={newPermisionario}>
               <Plus className="h-4 w-4" />
               Nuevo
             </Button>
