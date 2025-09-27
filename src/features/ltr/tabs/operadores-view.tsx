@@ -6,15 +6,27 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
 import { Label } from '@/components/ui/label'
-import { Plus, Trash2, Pencil, FileUp, FileDown } from 'lucide-react'
+import { Plus, Trash2, Pencil, FileUp, FileDown, Eye } from 'lucide-react'
 import {
-  type OperadorLTR,
-  readAll,
-  upsert,
-  remove,
-} from '../data/ltr-operadores-local'
+  type OperadorRemote as OperadorLTR,
+  listOperadores,
+  searchOperadores,
+  addOperador,
+  updateOperador,
+  deleteOperador,
+  importOperadores,
+  subscribeOperadores
+} from '../data/ltr-operadores-supabase'
 
-const EMPTY_OPERADOR: OperadorLTR = {
+// Extiende el tipo local sin tocar el archivo fuente
+type OperadorEx = OperadorLTR & {
+  licenciaUrl?: string
+  licenciaNombre?: string
+  aptoMedicoUrl?: string
+  aptoMedicoNombre?: string
+}
+
+const EMPTY_OPERADOR: OperadorEx = {
   id: '',
   nombre: '',
   numLicencia: '',
@@ -26,21 +38,82 @@ const EMPTY_OPERADOR: OperadorLTR = {
   telefono: '',
   nss: '',
   estatus: 'Activo',
+  licenciaUrl: '',
+  licenciaNombre: '',
+  aptoMedicoUrl: '',
+  aptoMedicoNombre: '',
 }
 
 export default function OperadoresView() {
   // --- Estado Principal ---
-  const [data, setData] = React.useState<OperadorLTR[]>([])
+  const [data, setData] = React.useState<OperadorEx[]>([])
   const [q, setQ] = React.useState('')
+  const [loading, setLoading] = React.useState(false)
 
+  // Carga inicial + Realtime
   React.useEffect(() => {
-    setData(readAll())
+    void load()
+    const unsub = subscribeOperadores(() => { void silentReload() })
+    return () => unsub()
   }, [])
+
+  async function load() {
+    setLoading(true)
+    try {
+      const rows = await listOperadores()
+      setData(rows as OperadorEx[])
+    } catch (e) {
+      console.error('Error cargando operadores', e)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function silentReload() {
+    try {
+      const rows = await listOperadores()
+      setData(rows as OperadorEx[])
+    } catch {}
+  }
+
+  // Debounce búsqueda
+  const searchTimer = React.useRef<number | undefined>()
+  React.useEffect(() => {
+    window.clearTimeout(searchTimer.current)
+    searchTimer.current = window.setTimeout(() => {
+      void doSearch(q)
+    }, 350)
+    return () => window.clearTimeout(searchTimer.current)
+  }, [q])
+
+  async function doSearch(term: string) {
+    if (!term.trim()) return load()
+    setLoading(true)
+    try {
+      const rows = await searchOperadores(term)
+      setData(rows as OperadorEx[])
+    } catch (e) {
+      console.error('Error buscando', e)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   // --- Estado del Modal (Sheet) ---
   const [sheetOpen, setSheetOpen] = React.useState(false)
-  const [draft, setDraft] = React.useState<OperadorLTR>(EMPTY_OPERADOR)
+  const [draft, setDraft] = React.useState<OperadorEx>(EMPTY_OPERADOR)
   const [isEditing, setIsEditing] = React.useState(false)
+
+  // Limpia object URLs al cerrar
+  React.useEffect(() => {
+    if (!sheetOpen) {
+      return () => {}
+    }
+    return () => {
+      if (draft.licenciaUrl?.startsWith('blob:')) URL.revokeObjectURL(draft.licenciaUrl)
+      if (draft.aptoMedicoUrl?.startsWith('blob:')) URL.revokeObjectURL(draft.aptoMedicoUrl)
+    }
+  }, [sheetOpen])
 
   // --- Lógica de Filtrado ---
   const filteredData = React.useMemo(() => {
@@ -48,52 +121,150 @@ export default function OperadoresView() {
     return data.filter(o => [o.id, o.nombre, o.numLicencia, o.estatus, o.rfc, o.curp].join(' ').toLowerCase().includes(query))
   }, [data, q])
 
-  // --- Lógica de ID Secuencial ---
-  function nextOperadorId(operadores: OperadorLTR[]): string {
-    const maxId = operadores.reduce((max, op) => {
-      const match = op.id.match(/^LTR-OP-(\d+)$/);
-      if (match) {
-        const num = parseInt(match[1], 10);
-        return num > max ? num : max;
-      }
-      return max;
-    }, 0);
-    const newNum = maxId + 1;
-    return `LTR-OP-${String(newNum).padStart(2, '0')}`;
-  }
-
   // --- Lógica CRUD ---
   function handleNew() {
     setIsEditing(false)
-    setDraft({ ...EMPTY_OPERADOR, id: nextOperadorId(data) })
+    setDraft({ ...EMPTY_OPERADOR, id: '' })
     setSheetOpen(true)
   }
 
-  function handleEdit(operador: OperadorLTR) {
+  function handleEdit(operador: OperadorEx) {
     setIsEditing(true)
     setDraft(operador)
     setSheetOpen(true)
   }
 
-  function handleDelete(id: string) {
-    remove(id)
-    setData(prev => prev.filter(o => o.id !== id))
+  async function handleDelete(id: string) {
+    if (!confirm('¿Eliminar operador?')) return
+    try {
+      await deleteOperador(id)
+    } catch (e) {
+      console.error(e)
+      alert('Error eliminando.')
+    }
   }
 
-  function handleSave() {
+  async function handleSave() {
     if (!draft.nombre || !draft.numLicencia || !draft.curp) {
-      alert('Nombre, No. de Licencia y CURP son campos obligatorios.')
+      alert('Nombre, No. de Licencia y CURP son obligatorios.')
       return
     }
-
-    upsert(draft)
-
-    if (isEditing) {
-      setData(prev => prev.map(o => o.id === draft.id ? draft : o))
-    } else {
-      setData(prev => [...prev, draft])
+    const payload = {
+      id: draft.id?.trim() || undefined,
+      nombre: draft.nombre.trim(),
+      numLicencia: draft.numLicencia.trim(),
+      venceLicencia: draft.venceLicencia || null,
+      expMedico: draft.expMedico || null,
+      venceAptoMedico: draft.venceAptoMedico || null,
+      rfc: draft.rfc?.trim().toUpperCase() || null,
+      curp: draft.curp.trim().toUpperCase(),
+      telefono: draft.telefono || null,
+      nss: draft.nss || null,
+      estatus: draft.estatus as any,
+      licenciaUrl: draft.licenciaUrl || null,
+      licenciaNombre: draft.licenciaNombre || null,
+      aptoMedicoUrl: draft.aptoMedicoUrl || null,
+      aptoMedicoNombre: draft.aptoMedicoNombre || null,
     }
-    setSheetOpen(false)
+    try {
+      if (isEditing && payload.id) {
+        await updateOperador(payload.id, payload)
+      } else {
+        const newId = await addOperador(payload)
+        payload.id = newId
+      }
+      setSheetOpen(false)
+      await load()
+    } catch (e: any) {
+      console.error(e)
+      alert(e?.message || 'Error guardando.')
+    }
+  }
+
+  async function handleExport() {
+    if (!data.length) {
+      alert('Sin operadores para exportar.')
+      return
+    }
+    const rows = data.map(o => ({
+      id: o.id,
+      nombre: o.nombre,
+      numLicencia: o.numLicencia,
+      venceLicencia: o.venceLicencia || '',
+      expMedico: o.expMedico || '',
+      venceAptoMedico: o.venceAptoMedico || '',
+      rfc: o.rfc || '',
+      curp: o.curp,
+      telefono: o.telefono || '',
+      nss: o.nss || '',
+      estatus: o.estatus,
+      licenciaUrl: o.licenciaUrl || '',
+      aptoMedicoUrl: o.aptoMedicoUrl || '',
+    }))
+    try {
+      const XLSX = await import('@/utils/xlsx').then(m => m.getXLSX())
+      const ws = XLSX.utils.json_to_sheet(rows)
+      const wb = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(wb, ws, 'Operadores')
+      XLSX.writeFile(wb, 'ltr_operadores.xlsx')
+    } catch (e) {
+      console.error('Error exportando', e)
+      alert('Error exportando.')
+    }
+  }
+
+  async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    try {
+      const buf = await file.arrayBuffer()
+      const XLSX = await import('@/utils/xlsx').then(m => m.getXLSX())
+      const wb = XLSX.read(buf, { type: 'array' })
+      const sheet = wb.SheetNames[0]
+      const json = XLSX.utils.sheet_to_json<any>(wb.Sheets[sheet])
+      const rows = json.map(r => ({
+        nombre: r.nombre || r.Nombre,
+        numLicencia: r.numLicencia || r.NoLicencia,
+        curp: (r.curp || r.CURP || '').toUpperCase(),
+        rfc: (r.rfc || r.RFC || null),
+        estatus: r.estatus || 'Activo',
+        venceLicencia: r.venceLicencia || null,
+        venceAptoMedico: r.venceAptoMedico || null,
+        expMedico: r.expMedico || null,
+        telefono: r.telefono || null,
+        nss: r.nss || null,
+        licenciaUrl: r.licenciaUrl || null,
+        aptoMedicoUrl: r.aptoMedicoUrl || null,
+      })).filter(r => r.nombre && r.numLicencia && r.curp)
+      await importOperadores(rows)
+      await load()
+      alert(`${rows.length} operadores importados.`)
+    } catch (err) {
+      console.error(err)
+      alert('Error importando.')
+    } finally {
+      e.target.value = ''
+    }
+  }
+
+  function handleFileChange(kind: 'licencia' | 'apto', e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const url = URL.createObjectURL(file)
+    setDraft(d => {
+      if (kind === 'licencia') {
+        if (d.licenciaUrl?.startsWith('blob:')) URL.revokeObjectURL(d.licenciaUrl)
+        return { ...d, licenciaUrl: url, licenciaNombre: file.name }
+      } else {
+        if (d.aptoMedicoUrl?.startsWith('blob:')) URL.revokeObjectURL(d.aptoMedicoUrl)
+        return { ...d, aptoMedicoUrl: url, aptoMedicoNombre: file.name }
+      }
+    })
+  }
+
+  function openDoc(url?: string) {
+    if (!url) return
+    window.open(url, '_blank', 'noopener,noreferrer')
   }
 
   return (
@@ -106,10 +277,15 @@ export default function OperadoresView() {
           <div className="flex flex-wrap items-center gap-2">
             <Input placeholder="Buscar por ID, Nombre, RFC, CURP..." value={q} onChange={(e) => setQ(e.target.value)} className="flex-grow" />
             <Button onClick={handleNew} className="gap-2"><Plus className="h-4 w-4" /> Agregar Operador</Button>
-            <Button variant="outline" className="gap-1"><FileUp className="h-4 w-4" /> Importar</Button>
-            <Button variant="outline" className="gap-1"><FileDown className="h-4 w-4" /> Exportar</Button>
+            <input type="file" className="hidden" id="opImport" accept=".xlsx,.xls" onChange={handleImport} />
+            <Button variant="outline" className="gap-1" onClick={() => document.getElementById('opImport')?.click()}>
+              <FileUp className="h-4 w-4" /> Importar
+            </Button>
+            <Button variant="outline" className="gap-1" onClick={handleExport} disabled={!data.length}>
+              <FileDown className="h-4 w-4" /> Exportar
+            </Button>
           </div>
-
+          {loading && <div className="text-xs text-muted-foreground">Cargando...</div>}
           <div className="rounded-md border">
             <Table>
               <TableHeader>
@@ -183,11 +359,69 @@ export default function OperadoresView() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="opLicenciaFile">Archivo Licencia</Label>
-                  <Input id="opLicenciaFile" type="file" />
+                  <Input
+                    id="opLicenciaFile"
+                    type="file"
+                    onChange={(e) => handleFileChange('licencia', e)}
+                  />
+                  <Input
+                    placeholder="o pega URL pública (OneDrive/Drive)"
+                    value={draft.licenciaUrl || ''}
+                    onChange={(e) => setDraft(d => ({ ...d, licenciaUrl: e.target.value }))}
+                  />
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={!draft.licenciaUrl}
+                      onClick={() => openDoc(draft.licenciaUrl)}
+                      className="gap-1"
+                    >
+                      <Eye className="h-4 w-4" /> Ver
+                    </Button>
+                    {draft.licenciaNombre && (
+                      <span className="text-xs text-muted-foreground truncate max-w-[140px]" title={draft.licenciaNombre}>
+                        {draft.licenciaNombre}
+                      </span>
+                    )}
+                    {!draft.licenciaNombre && draft.licenciaUrl && !draft.licenciaUrl.startsWith('blob:') && (
+                      <span className="text-xs text-muted-foreground italic">URL externa</span>
+                    )}
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="opAptoFile">Archivo Apto Médico</Label>
-                  <Input id="opAptoFile" type="file" />
+                  <Input
+                    id="opAptoFile"
+                    type="file"
+                    onChange={(e) => handleFileChange('apto', e)}
+                  />
+                  <Input
+                    placeholder="o pega URL pública (OneDrive/Drive)"
+                    value={draft.aptoMedicoUrl || ''}
+                    onChange={(e) => setDraft(d => ({ ...d, aptoMedicoUrl: e.target.value }))}
+                  />
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={!draft.aptoMedicoUrl}
+                      onClick={() => openDoc(draft.aptoMedicoUrl)}
+                      className="gap-1"
+                    >
+                      <Eye className="h-4 w-4" /> Ver
+                    </Button>
+                    {draft.aptoMedicoNombre && (
+                      <span className="text-xs text-muted-foreground truncate max-w-[140px]" title={draft.aptoMedicoNombre}>
+                        {draft.aptoMedicoNombre}
+                      </span>
+                    )}
+                    {!draft.aptoMedicoNombre && draft.aptoMedicoUrl && !draft.aptoMedicoUrl.startsWith('blob:') && (
+                      <span className="text-xs text-muted-foreground italic">URL externa</span>
+                    )}
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="opExpMedico">Exp Medico</Label>
