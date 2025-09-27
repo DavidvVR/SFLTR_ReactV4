@@ -77,7 +77,7 @@ export default function OperadoresView() {
   }
 
   // Debounce búsqueda
-  const searchTimer = React.useRef<number | undefined>()
+  const searchTimer = React.useRef<number | undefined>(undefined)
   React.useEffect(() => {
     window.clearTimeout(searchTimer.current)
     searchTimer.current = window.setTimeout(() => {
@@ -317,7 +317,7 @@ export default function OperadoresView() {
                           </AlertDialogHeader>
                           <AlertDialogFooter>
                             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => handleDelete(o.id)}>Eliminar</AlertDialogAction>
+                            <AlertDialogAction onClick={() => o.id && handleDelete(o.id)}>Eliminar</AlertDialogAction>
                           </AlertDialogFooter>
                         </AlertDialogContent>
                       </AlertDialog>

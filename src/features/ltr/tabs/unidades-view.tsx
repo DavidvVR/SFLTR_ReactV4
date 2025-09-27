@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
 import { Label } from '@/components/ui/label'
-import { Plus, Trash2, Pencil, FileUp, FileDown } from 'lucide-react'
+import { Plus, Trash2, Pencil, FileUp, FileDown, Eye } from 'lucide-react'
 import * as XLSX from 'xlsx'
 import {
   type UnidadLTRRemote as UnidadLTR,
@@ -25,6 +25,8 @@ type UnidadLTREx = UnidadLTR & {
   noPoliza?: string
   tarjetaUrl?: string   // URL pública (OneDrive/Drive) de Tarjeta de Circulación
   polizaUrl?: string    // URL pública (OneDrive/Drive) de Póliza de Seguro
+  tarjetaNombre?: string
+  polizaNombre?: string
 }
 
 const EMPTY_UNIDAD: UnidadLTREx = {
@@ -34,13 +36,15 @@ const EMPTY_UNIDAD: UnidadLTREx = {
   eco: '',
   disponibilidad: 'Disponible',
   marca: '',
-  anio: '',
+  anio: undefined,
   aseguradora: '',
   vencePoliza: '',
   permisoSCT: '',
   noPoliza: '', // NUEVO
   tarjetaUrl: '',
   polizaUrl: '',
+  tarjetaNombre: '',
+  polizaNombre: '',
 }
 
 export default function UnidadesView() {
@@ -77,7 +81,7 @@ export default function UnidadesView() {
     }
   }
 
-  const searchTimer = React.useRef<number | undefined>()
+  const searchTimer = React.useRef<number | undefined>(undefined)
   React.useEffect(() => {
     window.clearTimeout(searchTimer.current)
     searchTimer.current = window.setTimeout(() => {
@@ -119,7 +123,18 @@ export default function UnidadesView() {
 
   function handleEdit(unidad: UnidadLTR) {
     setIsEditing(true)
-    setDraft(unidad)
+    // Normaliza valores opcionales para el formulario
+    setDraft({
+      ...EMPTY_UNIDAD,
+      ...unidad,
+      anio: unidad.anio ?? null,          // para que el <input type="number"> no muestre 'undefined'
+      vencePoliza: unidad.vencePoliza || '',
+      tarjetaUrl: unidad.tarjetaUrl || '',
+      polizaUrl: unidad.polizaUrl || '',
+      noPoliza: (unidad as any).noPoliza || unidad.noPoliza || '',
+      tarjetaNombre: (unidad as any).tarjetaNombre || '',
+      polizaNombre: (unidad as any).polizaNombre || '',
+    })
     setSheetOpen(true)
   }
 
@@ -127,6 +142,7 @@ export default function UnidadesView() {
     if (!confirm('¿Eliminar unidad?')) return
     try {
       await deleteUnidadLTR(id)
+      await load() // recarga lista después de eliminar
     } catch (e) {
       console.error(e)
       alert('Error eliminando.')
@@ -155,6 +171,8 @@ export default function UnidadesView() {
         payload.id = newId
       }
       setSheetOpen(false)
+      setIsEditing(false)
+      setDraft(EMPTY_UNIDAD) // limpia formulario
       await load()
     } catch (e: any) {
       console.error(e)
@@ -224,6 +242,31 @@ export default function UnidadesView() {
       console.error('Error exportando', e)
       alert('Error exportando.')
     }
+  }
+
+  React.useEffect(() => {
+    if (!sheetOpen) return
+    return () => {
+      if (draft.tarjetaUrl?.startsWith('blob:')) URL.revokeObjectURL(draft.tarjetaUrl)
+      if (draft.polizaUrl?.startsWith('blob:')) URL.revokeObjectURL(draft.polizaUrl)
+    }
+  }, [sheetOpen])
+
+  function handleFileChange(kind: 'tarjeta' | 'poliza', e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const url = URL.createObjectURL(file)
+    setDraft(d => {
+      if (kind === 'tarjeta' && d.tarjetaUrl?.startsWith('blob:')) URL.revokeObjectURL(d.tarjetaUrl)
+      if (kind === 'poliza' && d.polizaUrl?.startsWith('blob:')) URL.revokeObjectURL(d.polizaUrl)
+      if (kind === 'tarjeta') return { ...d, tarjetaUrl: url, tarjetaNombre: file.name }
+      return { ...d, polizaUrl: url, polizaNombre: file.name }
+    })
+  }
+
+  function openDoc(url?: string) {
+    if (!url) return
+    window.open(url, '_blank', 'noopener,noreferrer')
   }
 
   return (
@@ -306,7 +349,7 @@ export default function UnidadesView() {
                           </AlertDialogHeader>
                           <AlertDialogFooter>
                             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => handleDelete(u.id)}>Eliminar</AlertDialogAction>
+                            <AlertDialogAction onClick={() => u.id && handleDelete(u.id)}>Eliminar</AlertDialogAction>
                           </AlertDialogFooter>
                         </AlertDialogContent>
                       </AlertDialog>
@@ -372,7 +415,17 @@ export default function UnidadesView() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="ltrUAnio">Año</Label>
-                  <Input id="ltrUAnio" type="number" value={draft.anio || ''} onChange={e => setDraft(d => ({ ...d, anio: e.target.value ? Number(e.target.value) : '' }))} />
+                  <Input
+                    id="ltrUAnio"
+                    type="number"
+                    value={draft.anio == null ? '' : draft.anio}
+                    onChange={e =>
+                      setDraft(d => ({
+                        ...d,
+                        anio: e.target.value === '' ? undefined : Number(e.target.value),
+                      }))
+                    }
+                  />
                 </div>
                 { /* NUEVO: No de Póliza (texto) */ }
                 <div className="space-y-2">
@@ -398,21 +451,77 @@ export default function UnidadesView() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="ltrUTarjetaFile">Tarjeta de Circulación</Label>
-                  <Input id="ltrUTarjetaFile" type="file" />
+                  <Input id="ltrUTarjetaFile" type="file" onChange={(e) => handleFileChange('tarjeta', e)} />
                   <Input
                     placeholder="o pega URL pública (OneDrive/Drive)"
                     value={draft.tarjetaUrl || ''}
-                    onChange={(e) => setDraft(d => ({ ...d, tarjetaUrl: e.target.value }))}
+                    onChange={(e) =>
+                      setDraft(d => ({
+                        ...d,
+                          tarjetaUrl: e.target.value,
+                          ...(e.target.value && !e.target.value.startsWith('blob:')
+                            ? { tarjetaNombre: '' }
+                            : {}),
+                      }))
+                    }
                   />
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={!draft.tarjetaUrl}
+                      onClick={() => openDoc(draft.tarjetaUrl)}
+                      className="gap-1"
+                    >
+                      <Eye className="h-4 w-4" /> Ver
+                    </Button>
+                    {draft.tarjetaNombre && (
+                      <span className="text-xs text-muted-foreground truncate max-w-[140px]" title={draft.tarjetaNombre}>
+                        {draft.tarjetaNombre}
+                      </span>
+                    )}
+                    {!draft.tarjetaNombre && draft.tarjetaUrl && !draft.tarjetaUrl.startsWith('blob:') && (
+                      <span className="text-xs italic text-muted-foreground">URL externa</span>
+                    )}
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="ltrUPolizaFile">Póliza de Seguro</Label>
-                  <Input id="ltrUPolizaFile" type="file" />
+                  <Input id="ltrUPolizaFile" type="file" onChange={(e) => handleFileChange('poliza', e)} />
                   <Input
                     placeholder="o pega URL pública (OneDrive/Drive)"
                     value={draft.polizaUrl || ''}
-                    onChange={(e) => setDraft(d => ({ ...d, polizaUrl: e.target.value }))}
+                    onChange={(e) =>
+                      setDraft(d => ({
+                        ...d,
+                        polizaUrl: e.target.value,
+                        ...(e.target.value && !e.target.value.startsWith('blob:')
+                          ? { polizaNombre: '' }
+                          : {}),
+                      }))
+                    }
                   />
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={!draft.polizaUrl}
+                      onClick={() => openDoc(draft.polizaUrl)}
+                      className="gap-1"
+                    >
+                      <Eye className="h-4 w-4" /> Ver
+                    </Button>
+                    {draft.polizaNombre && (
+                      <span className="text-xs text-muted-foreground truncate max-w-[140px]" title={draft.polizaNombre}>
+                        {draft.polizaNombre}
+                      </span>
+                    )}
+                    {!draft.polizaNombre && draft.polizaUrl && !draft.polizaUrl.startsWith('blob:') && (
+                      <span className="text-xs italic text-muted-foreground">URL externa</span>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>

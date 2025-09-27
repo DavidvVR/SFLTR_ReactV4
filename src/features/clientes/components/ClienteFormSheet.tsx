@@ -56,6 +56,7 @@ interface Props {
   open: boolean
   onOpenChange: (v: boolean) => void
   initialValue?: Cliente | null
+  onSave?: (data: ClienteFormValues) => Promise<void> | void   // <-- agregado
 }
 
 export function ClienteFormContainer(props: Props) {
@@ -285,7 +286,9 @@ export default function ClienteFormSheet({ open, onOpenChange, initialValue, onS
     }
     try {
       setIsSaving(true)
-      await Promise.resolve(onSave(payload)) // soporta onSave async o sync
+      if (onSave) {
+        await Promise.resolve(onSave(payload))
+      }
       showFlash('success', 'Cliente guardado.')
       onOpenChange(false)
     } catch (e: any) {
