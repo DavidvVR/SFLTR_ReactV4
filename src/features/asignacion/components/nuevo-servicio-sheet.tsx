@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/components/ui/sheet'
 import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription } from '@/components/ui/alert-dialog'
 import type { Servicio } from './ServiciosTable'
+import { listClientesConTarifas } from '../data/clientes-supabase'
 
 // --- Tipos de Datos (Sección de Servicio) ---
 interface Tarifa {
@@ -41,9 +42,6 @@ interface Permisionario {
 }
 
 // --- Helpers para leer de LocalStorage ---
-const CLIENT_STORAGE_KEYS = ['sr_clientes', 'sr_clientes_registrados', 'srClientes'];
-
-// CORRECCIÓN DEFINITIVA: Usar las claves correctas encontradas en tu localStorage.
 const LTR_UNITS_KEY = 'SFLTR_LTR_UNIDADES'; 
 const LTR_OPS_KEY = 'SFLTR_LTR_OPERADORES';
 const PERMISIONARIOS_KEY = 'sr_permisionarios';
@@ -79,14 +77,6 @@ function normalizeOperator(o: any): OperadorBase {
   };
 }
 
-function getAllClients(): Cliente[] {
-  for (const key of CLIENT_STORAGE_KEYS) {
-    const data = _readLS<any>(key);
-    if (data.length > 0) return data.map(normalizeClient).filter(c => c.id && c.nombre);
-  }
-  return [];
-}
-
 // --- Componente Principal ---
 interface NuevoServicioSheetProps {
   open: boolean;
@@ -100,6 +90,8 @@ interface NuevoServicioSheetProps {
 export function NuevoServicioSheet({ open, onOpenChange, onSave, mode = 'create', initialData, onSaveEdit }: NuevoServicioSheetProps) {
   // --- ESTADO: Datos del Servicio ---
   const [clients, setClients] = React.useState<Cliente[]>([]);
+  const [clientsLoading, setClientsLoading] = React.useState(false);
+  const [clientsError, setClientsError] = React.useState<string | null>(null);
   const [unitTypes, setUnitTypes] = React.useState<string[]>([]);
   const [journeys, setJourneys] = React.useState<Tarifa[]>([]);
   const [price, setPrice] = React.useState<number | undefined>(undefined);
@@ -140,8 +132,7 @@ export function NuevoServicioSheet({ open, onOpenChange, onSave, mode = 'create'
   // --- EFECTOS: Carga de datos inicial ---
   React.useEffect(() => {
     if (open) {
-      setClients(getAllClients());
-
+      void loadClients()
       // Cargar flota propia (LTR) desde las claves correctas
       const ltrUnitsData = _readLS<any>(LTR_UNITS_KEY).map(normalizeUnit);
       const ltrOperatorsData = _readLS<any>(LTR_OPS_KEY).map(normalizeOperator);
@@ -168,6 +159,31 @@ export function NuevoServicioSheet({ open, onOpenChange, onSave, mode = 'create'
       console.log('✅ Permisionarios cargados:', permisionariosData.length);
     }
   }, [open]);
+
+  async function loadClients() {
+    setClientsLoading(true)
+    setClientsError(null)
+    try {
+      const rows = await listClientesConTarifas()
+      // Normaliza al tipo local
+      setClients(rows.map(r => ({
+        id: r.id,
+        nombre: r.nombre,
+        rfc: r.rfc || '',
+        tarifas: r.tarifas?.map(t => ({
+          tipoUnidad: t.tipoUnidad,
+          estadoOrigen: t.estadoOrigen,
+          estadoDestino: t.estadoDestino,
+          tarifa: t.tarifa,
+        })) || [],
+      })))
+    } catch (e: any) {
+      console.error('Error cargando clientes', e)
+      setClientsError(e?.message || 'Error cargando clientes')
+    } finally {
+      setClientsLoading(false)
+    }
+  }
 
   // --- EFECTOS: Lógica encadenada de "Datos del Servicio" ---
   React.useEffect(() => {
@@ -408,10 +424,35 @@ export function NuevoServicioSheet({ open, onOpenChange, onSave, mode = 'create'
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="asigClienteSelect">Cliente*</Label>
-                    <Select onValueChange={setSelectedClientId} value={selectedClientId || ''} disabled={clients.length === 0}>
-                      <SelectTrigger id="asigClienteSelect"><SelectValue placeholder={clients.length > 0 ? "Selecciona..." : "No hay clientes"} /></SelectTrigger>
-                      <SelectContent>{clients.map(c => <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>)}</SelectContent>
+                    <Select
+                      onValueChange={setSelectedClientId}
+                      value={selectedClientId || ''}
+                      disabled={clientsLoading || clients.length === 0}
+                    >
+                      <SelectTrigger id="asigClienteSelect">
+                        <SelectValue
+                          placeholder={
+                            clientsLoading
+                              ? "Cargando..."
+                              : clientsError
+                                ? "Error"
+                                : clients.length > 0
+                                  ? "Selecciona..."
+                                  : "Sin clientes"
+                          }
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {clients.map(c => (
+                          <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>
+                        ))}
+                      </SelectContent>
                     </Select>
+                    {clientsError && (
+                      <div className="text-xs text-red-500 mt-1">
+                        {clientsError} <button className="underline" onClick={() => loadClients()}>Reintentar</button>
+                      </div>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="asigTipoUnidad">Tipo de unidad*</Label>
@@ -567,3 +608,25 @@ function toDatetimeLocal(value?: Date | string): string {
   const local = new Date(d.getTime() - off * 60000)
   return local.toISOString().slice(0, 16)
 }
+
+// SQL Query to insert data into cliente_tarifas
+const insertClienteTarifasQuery = `
+insert into cliente_tarifas (cliente_id, tipo_unidad, estado_origen, estado_destino, tarifa)
+select
+  c.id,
+  coalesce(t->>'tipoUnidad', t->>'tipo_unidad') as tipo_unidad,
+  coalesce(t->>'estadoOrigen', t->>'estado_origen') as estado_origen,
+  coalesce(t->>'estadoDestino', t->>'estado_destino') as estado_destino,
+  nullif(t->>'tarifa','')::numeric as tarifa
+from clientes c
+cross join lateral jsonb_array_elements(c.tarifas) t
+where jsonb_typeof(c.tarifas) = 'array'
+  and coalesce(t->>'tipoUnidad', t->>'tipo_unidad') is not null
+  and not exists (
+    select 1 from cliente_tarifas ct
+    where ct.cliente_id = c.id
+      and ct.tipo_unidad = coalesce(t->>'tipoUnidad', t->>'tipo_unidad')
+      and ct.estado_origen = coalesce(t->>'estadoOrigen', t->>'estado_origen')
+      and ct.estado_destino = coalesce(t->>'estadoDestino', t->>'estado_destino')
+  );
+`;

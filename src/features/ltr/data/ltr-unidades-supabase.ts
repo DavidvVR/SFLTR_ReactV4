@@ -4,40 +4,40 @@ import { getSupabase } from '@/lib/supabase'
 export interface UnidadLTRRemote {
   id?: string
   placas: string
-  eco?: string
   tipo: string
-  disponibilidad: 'Disponible' | 'En Mtto' | 'Baja'
-  marca?: string
+  eco?: string | null
+  disponibilidad: string
+  marca?: string | null
   anio?: number | null
   aseguradora?: string | null
-  vencePoliza?: string | null   // UI (date ISO / yyyy-mm-dd)
+  vencePoliza?: string | null
   permisoSCT?: string | null
   noPoliza?: string | null
   polizaUrl?: string | null
-  polizaNombre?: string | null
   tarjetaUrl?: string | null
+  polizaNombre?: string | null
   tarjetaNombre?: string | null
   created_at?: string
   updated_at?: string
 }
 
-function mapFromDb(r: any): UnidadLTRRemote {
+function fromDb(r: any): UnidadLTRRemote {
   return {
     id: r.id,
     placas: r.placas,
-    eco: r.eco ?? undefined,
     tipo: r.tipo,
+    eco: r.eco,
     disponibilidad: r.disponibilidad,
-    marca: r.marca ?? undefined,
-    anio: r.anio ?? undefined,
-    aseguradora: r.aseguradora ?? undefined,
-    vencePoliza: r.vence_poliza ?? undefined,
-    permisoSCT: r.permiso_sct ?? undefined,
-    noPoliza: r.no_poliza ?? undefined,
-    polizaUrl: r.poliza_url ?? undefined,
-    polizaNombre: r.poliza_nombre ?? undefined,
-    tarjetaUrl: r.tarjeta_url ?? undefined,
-    tarjetaNombre: r.tarjeta_nombre ?? undefined,
+    marca: r.marca,
+    anio: r.anio,
+    aseguradora: r.aseguradora,
+    vencePoliza: r.vence_poliza,
+    permisoSCT: r.permiso_sct,
+    noPoliza: r.no_poliza,
+    polizaUrl: r.poliza_url,
+    tarjetaUrl: r.tarjeta_url,
+    polizaNombre: r.poliza_nombre,
+    tarjetaNombre: r.tarjeta_nombre,
     created_at: r.created_at,
     updated_at: r.updated_at,
   }
@@ -67,10 +67,10 @@ export async function listUnidadesLTR(): Promise<UnidadLTRRemote[]> {
   const s = getSupabase()
   const { data, error } = await s
     .from('ltr_unidades')
-    .select('*')
+    .select('id, placas, eco, tipo, disponibilidad, marca, anio, aseguradora, vence_poliza, permiso_sct, no_poliza, poliza_url, tarjeta_url, poliza_nombre, tarjeta_nombre, created_at, updated_at')
     .order('created_at', { ascending: false })
   if (error) throw error
-  return (data || []).map(mapFromDb)
+  return (data || []).map(fromDb)
 }
 
 export async function searchUnidadesLTR(q: string, tipoFilter?: string): Promise<UnidadLTRRemote[]> {
@@ -93,7 +93,7 @@ export async function searchUnidadesLTR(q: string, tipoFilter?: string): Promise
 
   const { data, error } = await query
   if (error) throw error
-  return (data || []).map(mapFromDb)
+  return (data || []).map(fromDb)
 }
 
 export async function addUnidadLTR(u: UnidadLTRRemote): Promise<string> {
