@@ -16,6 +16,10 @@ interface Tarifa {
   estadoDestino: string;
   tarifa: number;
 }
+
+
+
+
 interface Cliente {
   id: string;
   nombre: string;
