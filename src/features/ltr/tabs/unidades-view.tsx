@@ -10,14 +10,22 @@ import { Label } from '@/components/ui/label'
 import { Plus, Trash2, Pencil, FileUp, FileDown } from 'lucide-react'
 import * as XLSX from 'xlsx'
 import {
-  type UnidadLTR,
-  readAll,
-  upsert,
-  remove,
-} from '../data/ltr-unidades-local'
+  type UnidadLTRRemote as UnidadLTR,
+  listUnidadesLTR,
+  searchUnidadesLTR,
+  addUnidadLTR,
+  updateUnidadLTR,
+  deleteUnidadLTR,
+  importUnidadesLTR,
+  subscribeUnidadesLTR,
+} from '../data/ltr-unidades-supabase'
 
 // Extiende el tipo localmente para incluir No de Póliza
-type UnidadLTREx = UnidadLTR & { noPoliza?: string }
+type UnidadLTREx = UnidadLTR & {
+  noPoliza?: string
+  tarjetaUrl?: string   // URL pública (OneDrive/Drive) de Tarjeta de Circulación
+  polizaUrl?: string    // URL pública (OneDrive/Drive) de Póliza de Seguro
+}
 
 const EMPTY_UNIDAD: UnidadLTREx = {
   id: '',
@@ -31,6 +39,8 @@ const EMPTY_UNIDAD: UnidadLTREx = {
   vencePoliza: '',
   permisoSCT: '',
   noPoliza: '', // NUEVO
+  tarjetaUrl: '',
+  polizaUrl: '',
 }
 
 export default function UnidadesView() {
@@ -38,11 +48,56 @@ export default function UnidadesView() {
   const [data, setData] = React.useState<UnidadLTREx[]>([])
   const [q, setQ] = React.useState('')
   const [tipoFilter, setTipoFilter] = React.useState('')
+  const [loading, setLoading] = React.useState(false)
 
   React.useEffect(() => {
-    // Lee y mapea posibles registros existentes (si ya traen noPoliza, se conserva)
-    setData(readAll().map(u => ({ ...u })))
+    void load()
+    const unsub = subscribeUnidadesLTR(() => { void loadSilent() })
+    return () => unsub()
   }, [])
+
+  async function load() {
+    setLoading(true)
+    try {
+      const rows = await listUnidadesLTR()
+      setData(rows as UnidadLTREx[])
+    } catch (e) {
+      console.error('Error cargando unidades', e)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function loadSilent() {
+    try {
+      const rows = await listUnidadesLTR()
+      setData(rows as UnidadLTREx[])
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
+  const searchTimer = React.useRef<number | undefined>()
+  React.useEffect(() => {
+    window.clearTimeout(searchTimer.current)
+    searchTimer.current = window.setTimeout(() => {
+      void doSearch(q, tipoFilter)
+    }, 350)
+    return () => window.clearTimeout(searchTimer.current)
+  }, [q, tipoFilter])
+
+  async function doSearch(term: string, tipo: string) {
+    if (!term.trim() && !tipo) return load()
+    setLoading(true)
+    try {
+      const rows = await searchUnidadesLTR(term, tipo || undefined)
+      setData(rows as UnidadLTREx[])
+    } catch (e) {
+      console.error('Error buscando', e)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   // --- Estado del Modal (Sheet) ---
   const [sheetOpen, setSheetOpen] = React.useState(false)
@@ -51,35 +106,14 @@ export default function UnidadesView() {
   const importFileRef = React.useRef<HTMLInputElement | null>(null)
 
   // --- Lógica de Filtrado y Búsqueda ---
-  const filteredData = React.useMemo(() => {
-    return data
-      .filter(u => tipoFilter ? u.tipo === tipoFilter : true)
-      .filter(u => {
-        const query = q.toLowerCase()
-        return [u.id, u.tipo, u.placas, u.eco, u.disponibilidad].join(' ').toLowerCase().includes(query)
-      })
-  }, [data, q, tipoFilter])
+  const filteredData = data
 
   const tiposUnicos = React.useMemo(() => [...new Set(data.map(u => u.tipo))], [data])
-
-  // --- Lógica de ID Secuencial ---
-  function nextUnidadId(unidades: UnidadLTR[]): string {
-    const maxId = unidades.reduce((max, u) => {
-      const match = u.id.match(/^LTR-UN-(\d+)$/);
-      if (match) {
-        const num = parseInt(match[1], 10);
-        return num > max ? num : max;
-      }
-      return max;
-    }, 0);
-    const newNum = maxId + 1;
-    return `LTR-UN-${String(newNum).padStart(2, '0')}`;
-  }
 
   // --- Lógica CRUD ---
   function handleNew() {
     setIsEditing(false)
-    setDraft({ ...EMPTY_UNIDAD, id: nextUnidadId(data) })
+    setDraft({ ...EMPTY_UNIDAD, id: '' })
     setSheetOpen(true)
   }
 
@@ -89,67 +123,107 @@ export default function UnidadesView() {
     setSheetOpen(true)
   }
 
-  function handleDelete(id: string) {
-    remove(id)
-    setData(prev => prev.filter(u => u.id !== id))
+  async function handleDelete(id: string) {
+    if (!confirm('¿Eliminar unidad?')) return
+    try {
+      await deleteUnidadLTR(id)
+    } catch (e) {
+      console.error(e)
+      alert('Error eliminando.')
+    }
   }
 
-  function handleSave() {
+  async function handleSave() {
     if (!draft.placas || !draft.tipo) {
-      alert('Placas y Tipo son campos obligatorios.')
+      alert('Placas y Tipo obligatorios.')
       return
     }
-    // Persiste (el store puede ignorar campos extra si no los usa)
-    upsert(draft as UnidadLTR)
-
-    if (isEditing) {
-      setData(prev => prev.map(u => u.id === draft.id ? draft : u))
-    } else {
-      setData(prev => [...prev, draft])
+    const payload: UnidadLTR = {
+      ...draft,
+      id: draft.id?.trim() || undefined,
+      anio: draft.anio ? Number(draft.anio) : undefined,
+      vencePoliza: draft.vencePoliza || null,
+      noPoliza: draft.noPoliza || null,
+      polizaUrl: draft.polizaUrl || null,
+      tarjetaUrl: draft.tarjetaUrl || null,
     }
-    setSheetOpen(false)
+    try {
+      if (isEditing && payload.id) {
+        await updateUnidadLTR(payload.id, payload)
+      } else {
+        const newId = await addUnidadLTR(payload)
+        payload.id = newId
+      }
+      setSheetOpen(false)
+      await load()
+    } catch (e: any) {
+      console.error(e)
+      alert(e?.message || 'Error guardando.')
+    }
   }
 
-  // --- Lógica de Importación/Exportación ---
-  function handleExport() {
-    if (data.length === 0) {
-      alert("No hay unidades para exportar.")
-      return
-    }
-    const worksheet = XLSX.utils.json_to_sheet(data)
-    const workbook = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(workbook, worksheet, "UnidadesLTR")
-    XLSX.writeFile(workbook, "UnidadesLTR.xlsx")
-  }
-
-  function handleImport(event: React.ChangeEvent<HTMLInputElement>) {
+  async function handleImport(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0]
     if (!file) return
-
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      try {
-        const binaryStr = e.target?.result
-        const workbook = XLSX.read(binaryStr, { type: 'binary' })
-        const sheetName = workbook.SheetNames[0]
-        const worksheet = workbook.Sheets[sheetName]
-        const jsonData = XLSX.utils.sheet_to_json<UnidadLTR>(worksheet)
-        
-        const newData = [...data]
-        jsonData.forEach(item => {
-          upsert(item)
-          newData.push(item)
-        })
-
-        setData(newData)
-        alert(`${jsonData.length} unidades importadas.`)
-      } catch (error) {
-        alert("Error al importar el archivo.")
-        console.error(error)
-      }
+    try {
+      const dataBuf = await file.arrayBuffer()
+      const wb = XLSX.read(dataBuf, { type: 'array' })
+      const sheet = wb.SheetNames[0]
+      const json = XLSX.utils.sheet_to_json<any>(wb.Sheets[sheet])
+      const rows = json.map(r => ({
+        placas: r.placas || r.Placas,
+        tipo: r.tipo || r.Tipo,
+        eco: r.eco || r.Eco || null,
+        disponibilidad: r.disponibilidad || 'Disponible',
+        marca: r.marca || null,
+        anio: r.anio ? Number(r.anio) : null,
+        aseguradora: r.aseguradora || null,
+        vencePoliza: r.vencePoliza || null,
+        permisoSCT: r.permisoSCT || null,
+        noPoliza: r.noPoliza || null,
+        polizaUrl: r.polizaUrl || null,
+        tarjetaUrl: r.tarjetaUrl || null,
+      }))
+      await importUnidadesLTR(rows)
+      await load()
+      alert(`${rows.length} unidades importadas.`)
+    } catch (e) {
+      console.error(e)
+      alert('Error importando.')
+    } finally {
+      event.target.value = ''
     }
-    reader.readAsBinaryString(file)
-    event.target.value = ''
+  }
+
+  async function handleExport() {
+    if (!data.length) {
+      alert('No hay unidades para exportar.')
+      return
+    }
+    try {
+      const rows = data.map(u => ({
+        id: u.id,
+        placas: u.placas,
+        eco: u.eco || '',
+        tipo: u.tipo,
+        disponibilidad: u.disponibilidad,
+        marca: u.marca || '',
+        anio: u.anio || '',
+        aseguradora: u.aseguradora || '',
+        vencePoliza: u.vencePoliza || '',
+        permisoSCT: u.permisoSCT || '',
+        noPoliza: u.noPoliza || '',
+        polizaUrl: u.polizaUrl || '',
+        tarjetaUrl: u.tarjetaUrl || '',
+      }))
+      const ws = XLSX.utils.json_to_sheet(rows)
+      const wb = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(wb, ws, 'Unidades')
+      XLSX.writeFile(wb, 'ltr_unidades.xlsx')
+    } catch (e) {
+      console.error('Error exportando', e)
+      alert('Error exportando.')
+    }
   }
 
   return (
@@ -196,6 +270,8 @@ export default function UnidadesView() {
               <FileDown className="h-4 w-4" /> Exportar
             </Button>
           </div>
+
+          {loading && <div className="text-sm text-muted-foreground">Cargando...</div>}
 
           <div className="rounded-md border">
             <Table>
@@ -323,10 +399,20 @@ export default function UnidadesView() {
                 <div className="space-y-2">
                   <Label htmlFor="ltrUTarjetaFile">Tarjeta de Circulación</Label>
                   <Input id="ltrUTarjetaFile" type="file" />
+                  <Input
+                    placeholder="o pega URL pública (OneDrive/Drive)"
+                    value={draft.tarjetaUrl || ''}
+                    onChange={(e) => setDraft(d => ({ ...d, tarjetaUrl: e.target.value }))}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="ltrUPolizaFile">Póliza de Seguro</Label>
                   <Input id="ltrUPolizaFile" type="file" />
+                  <Input
+                    placeholder="o pega URL pública (OneDrive/Drive)"
+                    value={draft.polizaUrl || ''}
+                    onChange={(e) => setDraft(d => ({ ...d, polizaUrl: e.target.value }))}
+                  />
                 </div>
               </div>
             </div>
